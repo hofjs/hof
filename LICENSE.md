@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2021 [Team](https://github.com/hofjs/hof/graphs/contributors)
+Copyright (c) 2021 [Hof.js contributors](https://github.com/hofjs/hof/graphs/contributors)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
