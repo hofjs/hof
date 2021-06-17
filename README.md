@@ -401,7 +401,7 @@ CDN: https://cdn.jsdelivr.net/gh/hofjs/hof/dist/hof.min.js
 
 Due to the early stage of development of this framework, no documentation exists yet. However, since it is very much based on JavaScript and web standards and allows intuitive development, the above explanations are usually sufficient to use all framework features.
 
-You can contribute by sending pull requests to [this repository](https://github.com/walterkern/hof).
+You can contribute by sending pull requests to [this repository](https://github.com/hofjs/hof).
 
 
 ## License
