@@ -395,6 +395,8 @@ However, frameworks are usually preferred to pure web standard solutions, since 
 
 Hof can be installed by including the script file hof.min.js. That's all that is required.
 
+CDN: https://cdn.jsdelivr.net/gh/hofjs/hof/dist/hof.min.js
+
 ## Documentation
 
 Due to the early stage of development of this framework, no documentation exists yet. However, since it is very much based on JavaScript and web standards and allows intuitive development, the above explanations are usually sufficient to use all framework features.
