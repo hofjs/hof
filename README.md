@@ -243,6 +243,137 @@ A classic side effect should never return a value. Even if a derived property is
 
 It is important here that also with side effects a deep observability exists, i.e. also if subproperties of a variable change, changes are tracked and side effects executed.
 
+
+### Initialization logic
+
+Initialization logic can be specified within the **construct method**.
+
+```js
+    component("person-data", {
+            // ...
+
+            construct() {
+                fetch('https://jsonplaceholder.typicode.com/todos/1')
+                    .then(response => response.json())
+                    .then(json => this.selected.name = json.title);
+            }
+
+            // ...
+    });
+```
+
+### Context callbacks
+
+By default, callbacks are passed down from a parent component to a child component. This is the recommended approach. However, for very complex applications with deep object structures, it can be cumbersome to pass a callback down n levels if it is only needed by the component at the very bottom of the tree. For such cases there is the possibility to use so-called **Contextual Callbacks**.
+
+For this no passed callback is called in the child component, but the generic callback **dispatch** is used, which accepts as **first parameter a string value for the action** to be executed and as **second parameter an arbitrary object** with data.
+
+Interested components in the tree can register for callbacks of certain types and specify which methods should be called in their own implementation.
+
+
+```js
+    component("person-data-list", {
+            persons: [],
+                       
+            render() {
+                return ["persons", (person) =>
+                    `<person-data-list-item person="${person}"></person-data-list-item>`
+                ];
+            }
+        });
+
+        component("person-data-list-item", {
+            person: new Person(),
+            
+            render() {
+                return () => `
+                    ${this.person.name} - ${this.person.age} Jahre                            
+                    [<a href="#" onclick="${() => this.dispatch('EDIT_PERSON', this.person)}">Edit</a>]
+                    [<a href="#" onclick="${() => this.dispatch('DELETE_PERSON', this.person)}">Delete</a>]
+                `;
+            }
+        }, "li");
+
+        component("person-data", {
+            selected: new Person(),
+            persons: [new Person("Alex", 21), new Person("Chris", 19), new Person("Mike", 19)],
+
+            changeName(value) { /* ... */ },
+            changeAge(value) { /* ... */ },
+
+            edit(person) { /* ... */ },
+            remove(person) { /* ... */ },
+            save() { /* ... */ },
+            findIndex(person) { /* ... */ },
+
+            callbacks() {
+                return  {
+                    EDIT_PERSON: this.edit,
+                    DELETE_PERSON: this.remove,
+                    CHANGE_NAME: this.changeName,
+                    CHANGE_AGE: this.changeAge
+                }
+            },
+            
+            render() {
+                return () => `
+                    <fieldset>
+                        <person-data-input label="Name" value="${this.selected.name}" action="CHANGE_NAME"></person-data-input>
+                        <person-data-input label="Age" value="${this.selected.age}" action="CHANGE_AGE"></person-data-input>
+                        <button onclick="${this.save}">Speichern</button>
+                    </fieldset>                    
+                    
+                    <person-data-list persons="${this.persons}" edititem="${this.edit}" deleteitem="${this.remove}"></person-data-list>
+                `;
+            }
+        });
+```
+
+
+This approach allows maximum loose coupling, since arbitrary components in the tree can send messages to each other, even if no callbacks were passed down to them manually. The only decisive factor is the definition of standardized constants for the actions or callbacks to be executed.
+
+
+### Services
+
+There is no special feature for the implemantation of services. So these can be realized as Plain Old JavaScript Objects. However, it is recommended to retrieve data in the **construct method of the root component** of the app, so that after assigning the asynchronously loaded data to a reactive property, the state is automatically passed to the child components.
+
+
+```js
+    component("person-data", {
+            // ...
+
+            construct() {
+                fetch('https://jsonplaceholder.typicode.com/todos/1')
+                    .then(response => response.json())
+                    .then(json => this.selected.name = json.title);
+            }
+
+            // ...
+    });
+```
+
+### Class style components
+
+As an alternative to the **Function Syntax** shown above, all components can be defined using the **Class Syntax**. This is closer to the implementation and shows the connection to Web Components, since here it is to be derived from a base class.
+
+```js
+customElements.define('counter-component', class extends HofHtmlElement {
+    constructor() { super('div'); super.useAutoProps(); }
+
+    count = 10;
+
+    render() {
+        super.renderContent(() => `
+            <div>${new Date()}</div>
+            <div>Aktueller Wert: ${this.count} <button onclick="${() => this.count++}">Erhöhen</button></div>
+        `);
+    }
+});
+```
+
+For details, please refer to the examples.
+
+
 ## Why a new framework?
 
 **Current popular frameworks** offer powerful concepts for the implementation of component-oriented applications. However, the components they realize are framework-specific constructs and do not conform to the Web Component standards by default. For most frameworks, this brings the **following disadvantages**:
@@ -262,7 +393,7 @@ However, frameworks are usually preferred to pure web standard solutions, since 
 
 ## Installation
 
-Hof can be installed by including the script file Hof.js. That's all that is required.
+Hof can be installed by including the script file hof.min.js. That's all that is required.
 
 ## Documentation
 
