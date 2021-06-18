@@ -1,9 +1,9 @@
-# Hof.js - High Observability Framework
+# Hof - High Observability Framework
 
-Hof.js is a modern framework for the development of Single Page Applications, which breaks with many current approaches and allows a development close to the web standards.
+Hof is a modern framework for the development of Single Page Applications, which breaks with many current approaches and allows a development close to the web standards.
 
 ## Key features
-This framework has the following advantages, among others:
+Hof has the following advantages, among others:
 * **Extremely simple implementation** of complex apps based on Web Components and other web standards such as template strings is supported, which means that only minimal code is required to write even complex components and apps.
 * **Automatic deep state management** of variables, i.e. persons.push(newPerson) or even person.address.name=newName are recognized and lead to the rerendering of the UI - but only exactly those parts of the UI that depend on person.address.name - and all this without the overhead of a Virtual DOM or Virtual Proxies.
 * **Incremental augementation of existing web applications** because individual components can be added to any web application created with another framework, as they are just web components.
@@ -193,13 +193,13 @@ This component demonstrates how complex databinding expressions can be. It shoul
 This framework offers further features, which will be presented here in an overview.
 
 ### Local variables
-In addition to properties, **local variables can also be bound**. To do this, these **must be specified as parameters after the returned render expression**, as shown in the example.
+In addition to properties, **local variables can also be bound**.
 
 ```js
 render() {
   const someVariable = "World"
 
-  return [() => `Hello ${someVariable}`, {someVariable}];
+  return () => `Hello ${someVariable}`;
 }
 ```
 Like properties, **local variables also support deep observability**. Additionally, **multiple variables can be provided**. However local variables should be avoided in favor of simple render functions and component nesting.
@@ -212,9 +212,9 @@ In addition, **derived variables** can also be defined, which **are automaticall
 render() {
   const ageDoubled = () => this.data.selectedPerson.age * 2;
 
-  return [() => `<br/><br/>
+  return () => `<br/><br/>
           <person-data-input value="${live(ageDoubled)} || ''" onchange="${(event) => this.changeAge(event)}"></person-data-input>            
-  `, {ageDoubled}];
+  `;
 }
 ```
 Whenever this.data.selectedPerson.age changes, e.g. by a simple assignment of a new value (e.g. this.data.selectedPerson.age = 20), ageDoubled is automatically changed as well and the part of the UI that depends on this variable is rerendered.
@@ -229,13 +229,13 @@ It is important here that also with derived properties a deep observability exis
 render() {
   const selectedPersonSideEffect = () => console.dir(this.data.selectedPerson);
 
-  return [() => `<br/><br/>
+  return () => `
     ${live(selectedPersonSideEffect)}
         
     <fieldset>
       ...
     </fieldset>                    
-    `, {selectedPersonSideEffect}];
+    `;
 }
 ```
 
@@ -395,13 +395,11 @@ However, frameworks are usually preferred to pure web standard solutions, since 
 
 Hof can be installed by including the script file hof.min.js. That's all that is required.
 
-CDN: https://cdn.jsdelivr.net/gh/hofjs/hof/dist/hof.min.js
-
 ## Documentation
 
 Due to the early stage of development of this framework, no documentation exists yet. However, since it is very much based on JavaScript and web standards and allows intuitive development, the above explanations are usually sufficient to use all framework features.
 
-You can contribute by sending pull requests to [this repository](https://github.com/hofjs/hof).
+You can contribute by sending pull requests to [this repository](https://github.com/walterkern/hof).
 
 
 ## License
