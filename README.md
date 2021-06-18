@@ -1,9 +1,9 @@
-# Hof - High Observability Framework
+# Hof.js - High Observability Framework
 
-Hof is a modern framework for the development of Single Page Applications, which breaks with many current approaches and allows a development close to the web standards.
+Hof.js is a modern framework for the development of Single Page Applications, which breaks with many current approaches and allows a development close to the web standards.
 
 ## Key features
-Hof has the following advantages, among others:
+This framework has the following advantages, among others:
 * **Extremely simple implementation** of complex apps based on Web Components and other web standards such as template strings is supported, which means that only minimal code is required to write even complex components and apps.
 * **Automatic deep state management** of variables, i.e. persons.push(newPerson) or even person.address.name=newName are recognized and lead to the rerendering of the UI - but only exactly those parts of the UI that depend on person.address.name - and all this without the overhead of a Virtual DOM or Virtual Proxies.
 * **Incremental augementation of existing web applications** because individual components can be added to any web application created with another framework, as they are just web components.
@@ -396,15 +396,15 @@ However, frameworks are usually preferred to pure web standard solutions, since 
 
 ## Installation
 
-Hof can be installed by including the script file hof.min.js. That's all that is required.
+Hof.js can be installed by including the script file hof.min.js. That's all that is required.
 
 ## Documentation
 
 Due to the early stage of development of this framework, no documentation exists yet. However, since it is very much based on JavaScript and web standards and allows intuitive development, the above explanations are usually sufficient to use all framework features.
 
-You can contribute by sending pull requests to [this repository](https://github.com/walterkern/hof).
+You can contribute by sending pull requests to [this repository](https://github.com/hofjs/hof).
 
 
 ## License
 
-Hof is [MIT licensed](./LICENSE).
+Hof.js is [MIT licensed](./LICENSE).
