@@ -212,8 +212,11 @@ In addition, **derived variables** can also be defined, which **are automaticall
 render() {
   const ageDoubled = () => this.data.selectedPerson.age * 2;
 
-  return () => `<br/><br/>
-          <person-data-input value="${live(ageDoubled)} || ''" onchange="${(event) => this.changeAge(event)}"></person-data-input>            
+  return () => `
+    <person-data-input
+        value="${live(ageDoubled)} || ''"
+        onchange="${(event) => this.changeAge(event)}">
+    </person-data-input>            
   `;
 }
 ```
