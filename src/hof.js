@@ -483,6 +483,8 @@ function component(name, obj, tag = "div") {
     for (prop of Object.keys(obj))
         if (prop == "render") {
             const func = obj[prop]();
+            const params = _calculateLocalParameters();
+
             if (Array.isArray(func)) {
                 const renderFuncs = [];
 
@@ -492,10 +494,10 @@ function component(name, obj, tag = "div") {
                 else
                     renderFuncs.push(_calculateRenderFunc(func))
 
-                c.prototype["render"] = function() { renderFuncs.forEach((renderFunc => renderFunc(this))); }
+                c.prototype["render"] = function() { renderFuncs.forEach((renderFunc => renderFunc(this, params))); }
             }
             else // Aufruf function
-                c.prototype["render"] = function() { this.renderContent(func); };
+                c.prototype["render"] = function() { this.renderContent(func, params); };
         }
         else {
             // Due to a bug in current JS implementations, DOM events are also executed when the getter is
@@ -508,11 +510,27 @@ function component(name, obj, tag = "div") {
 
         function _calculateRenderFunc(func) {
             if (func.length == 1) // Aufruf [function]
-                return function(obj) { obj.renderContent(func[0]); };                     
+                return function(obj, params) { obj.renderContent(func[0], params); };                     
             else if (func.length == 2 && typeof(func[0]) == "function") // Aufruf [function, params]
                 return function(obj) { obj.renderContent(func[0], func[1]); };
             else if (func.length >= 2 && typeof(func[1]) == "function") // Aufruf [listParam, function, params]
-                return function(obj) { obj.renderList(obj[func[0]] ?? func[0], func[1]);  }
+                return function(obj, params) { obj.renderList(obj[func[0]] ?? func[0], func[1], func[2] ?? params);  }
+        }
+
+        function _calculateLocalParameters() {
+            let functionDefinition = obj[prop].toString();
+            let begin = functionDefinition.indexOf("{") + 1;
+            let end = functionDefinition.indexOf("return")
+            let functionBody = functionDefinition.substring(begin, end);
+
+            const regexp = new RegExp(`let[\\W]+([\\w]+)[\\W]*=`, 'g');
+
+            const variables = [];
+            for (const [,variable] of functionBody.matchAll(regexp))
+                variables.push(variable);
+
+            functionBody += "return {" + variables.join(",") + "}";
+            return new Function(functionBody).call(obj);
         }
 
     customElements.define(name, c);
