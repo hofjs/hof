@@ -1,0 +1,9 @@
+{
+    "name": "hof.js",
+    "description": "High Observability Framework",
+    "version": "0.0.1",
+    "license": "MIT",
+    "scripts": {
+      "build": "npx minify src/hof.js > dist/hof.min.js"
+    }
+}
