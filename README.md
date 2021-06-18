@@ -368,7 +368,7 @@ customElements.define('counter-component', class extends HofHtmlElement {
     render() {
         super.renderContent(() => `
             <div>${new Date()}</div>
-            <div>Aktueller Wert: ${this.count} <button onclick="${() => this.count++}">Erhöhen</button></div>
+            <div>Current value: ${this.count} <button onclick="${() => this.count++}">++</button></div>
         `);
     }
 });
