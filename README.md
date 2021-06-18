@@ -6,7 +6,7 @@ Hof.js is a modern framework for the development of Single Page Applications, wh
 This framework has the following advantages, among others:
 * **Extremely simple implementation** of complex apps based on Web Components and other web standards such as template strings is supported, which means that only minimal code is required to write even complex components and apps.
 * **Automatic deep state management** of variables, i.e. persons.push(newPerson) or even person.address.name=newName are recognized and lead to the rerendering of the UI - but only exactly those parts of the UI that depend on person.address.name - and all this without the overhead of a Virtual DOM or Virtual Proxies.
-* **Incremental augementation of existing web applications** because individual components can be added to any web application created with another framework, as they are just web components.
+* **Incremental enhancement of existing web applications** because individual components can be added to any web application created with another framework, as they are just web components.
 * **Functional development is supported** as an alternative to class-based approaches.
 * **Easy start of development with no dependencies is possible**, because no transpiler, CLI or tool is needed.  It is enough to include the framework which is only a few KB in size.
 * **IDEs provide best support even without extensions/plugins** since the code is pure JS.
@@ -338,7 +338,7 @@ This approach allows maximum loose coupling, since arbitrary components in the t
 
 ### Services
 
-There is no special feature for the implemantation of services. So these can be realized as Plain Old JavaScript Objects. However, it is recommended to retrieve data in the **construct method of the root component** of the app, so that after assigning the asynchronously loaded data to a reactive property, the state is automatically passed to the child components.
+There is no special feature for the implementation of services. So these can be realized as Plain Old JavaScript Objects. However, it is recommended to retrieve data in the **construct method of the root component** of the app, so that after assigning the asynchronously loaded data to a reactive property, the state is automatically passed to the child components.
 
 
 ```js
