@@ -480,10 +480,10 @@ function component(name, obj, tag = "div") {
         constructor() { super(tag); super.useAutoProps(); }
     };
 
-    for (prop of Object.keys(obj))
+    for (const prop of Object.keys(obj))
         if (prop == "render") {
             const func = obj[prop]();
-            const params = _calculateLocalParameters();
+            const params = _calculateLocalParameters(prop);
 
             if (Array.isArray(func)) {
                 const renderFuncs = [];
@@ -517,7 +517,7 @@ function component(name, obj, tag = "div") {
                 return function(obj, params) { obj.renderList(obj[func[0]] ?? func[0], func[1], func[2] ?? params);  }
         }
 
-        function _calculateLocalParameters() {
+        function _calculateLocalParameters(prop) {
             let functionDefinition = obj[prop].toString();
             let begin = functionDefinition.indexOf("{") + 1;
             let end = functionDefinition.indexOf("return")
