@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Counter app (class style)</title>
+    <script src="../../lib/nomodule/hof.js"></script>
+    <script>
+         customElements.define('counter-component', class extends HofHtmlElement {
+            constructor() { super('div'); super.useAutoProps(); }
+
+            count = 10;
+
+            render() {
+                super.renderContent(() => `
+                    <div>${new Date()}</div>
+                    <div>Aktueller Wert: ${this.count} <button onclick="${() => this.count++}">Erhöhen</button></div>
+                `);
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>Counter app (class style)</h1>
+    <counter-component></counter-component>
+    <counter-component count="20"></counter-component>
+</body>
+</html>

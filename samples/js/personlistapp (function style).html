@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Personlist app (function style)</title>
+    <script src="../../lib/nomodule/hof.js"></script>
+    <script>
+        class Person {
+            constructor(name, age) {
+                if (typeof(name) != "undefined" && typeof(age) != "undefined")
+                    this.id = Person.counter++; // Neues Objekt bekommt neue ID
+                else
+                    this.id = ""; // Temporäres Objekt bekommt keine ID
+
+                this.name = name || "";
+                this.age = age || "";
+
+                this.address = { street: "Test" };
+            }
+        }
+        Person.counter = 1;
+    </script>
+    <script>
+        component("person-data-input", {
+            value: "",
+            label: "",
+            onchange: null,
+
+            render() {
+                let double = () => value * 2;
+                return () => `${this.label}: <input value="${this.value}" onchange="${this.onchange}" />`;
+            }
+        }, "label");
+      
+        component("person-data-list", {
+            persons: [],
+            
+            createitem: null,
+            edititem: null,
+            deleteitem: null,
+            
+            render() {
+                return ["persons", (person) =>
+                    `<li>
+                        ${person.name} - ${person.age} Jahre
+                        [<a href="#" onclick="${() => this.edititem(person)}">Edit</a>]
+                        [<a href="#" onclick="${() => this.deleteitem(person)}">Delete</a>]
+                    </li>`];
+            }
+        });
+
+        component("person-data-info", {
+            value: [],
+
+            render() {
+                return () => `
+                    <br/><br/>Person Info
+                    <li>First Person: ${(this.value[0]?.name ?? "-") + " (" + (this.value[0]?.age ?? "") + ")"}</li>
+                    <li>Last Person: ${(this.value[this.value.length-1]?.name ?? "-") + " (" + (this.value[this.value.length-1]?.age ?? "") + ")"}</li>
+                `;
+            }
+        });
+
+        component("person-data", {
+            selected: new Person(),
+            persons: [new Person("Alex", 21), new Person("Chris", 19), new Person("Mike", 19)],
+
+            changeName(value) { this.selected.name = value; },
+            changeAge(event) { this.selected.age = event.target.value; },
+
+            create() { this.selected = new Person(); },
+            edit(person) { this.selected = person;  },
+            remove(person) { this.persons.splice(this.findIndex(person), 1); this.create(); },
+            save() {
+                if (this.selected.id) // Existing person?
+                    this.persons.splice(this.findIndex(this.selected), 1, this.selected);
+                else
+                    this.persons.push(new Person(this.selected.name, this.selected.age));
+
+                this.create();
+            },
+            findIndex(person) { return this.persons.findIndex(p => p.id == person.id);  },
+            
+            render() {
+                return () => `
+                    <fieldset>
+                        <person-data-input label="Name" value="${this.selected.name}" onchange="${(event) => this.changeName(event.target.value)}"></person-data-input>
+                        <person-data-input label="Age" value="${this.selected.age}" onchange="${(event) => this.changeAge(event)}"></person-data-input>
+                        <button onclick="${this.save}">Speichern</button>
+                    </fieldset>                    
+                    
+                    ${this.persons.length} Personen in der Liste
+                    <person-data-list persons="${this.persons}" edititem="${this.edit}" deleteitem="${this.remove}"></person-data-list>
+                    
+                    <a href="#" onclick="${this.create}">Neu</a>
+
+                    <person-data-info value="${this.persons}"></person-data-info>  
+                `;
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>Personlist app (function style)</h1>
+    <person-data></person-data>
+</body>
+</html>

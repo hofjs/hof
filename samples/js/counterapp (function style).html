@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Personlist app (function style)</title>
+    <script src="../../lib/nomodule/hof.js"></script>
+    <script>
+        // component("counter-component", {
+        //     count: 10,
+
+        //     render() {
+        //         return () => `
+        //             <div>${new Date()}</div>
+        //             <div>Count: ${this.count} <button onclick="${() => this.count++}">++</button></div>
+        //             <div>Double count: ${this.count*2}</div>
+        //         `;
+        //     }
+        // });
+
+
+        // component("counter-component", {
+        //     count: 10,
+ 
+        //     render() {             
+        //         let doubled = function() { return this.count * 2; }
+        //         // let doubled = () => this.count * 2; // Does not work because this cannot be bound in arrow functions
+
+        //         return () => `
+        //             <div>${new Date()}</div>
+        //             <div>Count: ${this.count} <button onclick="${() => this.count++}">++</button></div>
+        //             <div>Double count: ${doubled}</div>
+        //         `;
+        //     }
+        // });
+
+        // component("counter-component", {
+        //     count: 10,
+
+        //     doubled() { return this.count * 2; },
+
+        //     render() {
+        //         return () => `
+        //             <div>${new Date()}</div>
+        //             <div>Count: ${this.count} <button onclick="${() => this.count++}">++</button></div>
+        //             <div>Double count: ${doubled}</div>
+        //         `;
+        //     }
+        // });
+
+        // const counterStore = {
+        //     value: 10,
+
+        //     increment() { this.value++; }, 
+        //     decrement() { this.value--; },
+        // };
+
+        // component("counter-component", {
+        //     counterStore,
+            
+        //     render() {
+        //         let doubled = function() { return this.counterStore.value * 2; }
+        //         return () => `
+        //             <div>${new Date()}</div>
+        //             <div>Count: ${this.counterStore.value} <button onclick="${() => this.counterStore.value++}">++</button></div>
+        //             <div>Double count: ${doubled}</div>
+        //         `;
+        //     }
+        // });
+
+        // const counterStore = {
+        //     value: 10,
+
+        //     increment() { this.value++; }, 
+        //     decrement() { this.value--; },
+        // };
+
+        // component("counter-component", {
+        //     counterStore,
+        //     doubled() { return this.counterStore.value*2; },
+            
+        //     render() {
+        //         return () => `
+        //             <div>${new Date()}</div>
+        //             <div>Count: ${this.counterStore.value} <button onclick="${() => this.counterStore.value++}">++</button></div>
+        //             <div>Double count: ${this.doubled}</div>
+        //         `;
+        //     }
+        // });
+
+        // const counterStore = {
+        //     value: 10,
+
+        //     increment() { this.value++; }, 
+        //     decrement() { this.value--; },
+
+        //     doubled() { return this.value*2; },
+        // };
+
+        // component("counter-component", {
+        //     counterStore,
+          
+        //     render() {
+        //         return () => `
+        //             <div>${new Date()}</div>
+        //             <div>Count: ${this.counterStore.value} <button onclick="${() => this.counterStore.value++}">++</button></div>
+        //             <div>Double count: ${this.counterStore.doubled}</div>
+        //         `;
+        //     }
+        // });
+
+        // const counterStore = {
+        //     value: 10,
+
+        //     increment() { this.value++; }, 
+        //     decrement() { this.value--; },
+
+        //     test() { return this.value; },
+
+        //     doubled() {
+        //         return this.value * 2;
+        //     },
+        // };
+
+        // component("counter-component", {
+        //     counterStore,
+                    
+        //     render() {
+        //         return () => `
+        //             <div>${new Date()}</div>
+        //             <div>Count: ${this.counterStore.value} <button onclick="${() => this.counterStore.value++}">++</button></div>
+        //             <div>Double count: ${this.counterStore.doubled}</div>
+        //         `;
+        //     }
+        // });
+
+        // component("counter-component", {            
+        //     count: 10,
+        //     $count: function(newValue, oldValue) { console.log(newValue, oldValue); },
+          
+        //     render() {
+        //         const doubled = function() { return this.count * 2; };
+
+        //         return () => `
+        //             <div>${new Date()}</div>
+        //             <div>Count: ${this.count} <button onclick="${() => this.count++}">++</button></div>
+        //             <div>Double count: ${doubled}</div>
+        //         `;
+        //     }
+        // });
+
+        // component("counter-component", {
+            
+        //     count: 10,
+        //     countAfterChanged: function(newValue, oldValue) { console.log(newValue, oldValue); },
+        //     doubled() { return this.count * 2; },
+          
+        //     render() {
+        //         return () => `
+        //             <div>${new Date()}</div>
+        //             <div>Count: ${this.count} <button onclick="${() => this.count++}">++</button></div>
+        //             <div>Double count: ${this.doubled}</div>
+        //         `;
+        //     }
+        // });
+
+        const counterStore = {
+            value: 10,
+
+            valueBeforeChanged(newValue, oldValue) {
+                if (newValue <= 20)
+                    return true;
+                else
+                    return false;
+            },
+
+            valueAfterChanged(newValue, oldValue) {
+                console.log(newValue);
+            },
+
+            increment() { this.value++; }, 
+            decrement() { this.value--; },
+
+            test() { return this.value; },
+
+            // Live update
+            doubled: function() { return this.value * 2 },
+
+            // doubled() {
+            //     return this.value * 2;
+            // },
+        };
+
+        component("counter-component", {
+            counterStore,
+
+            // counterStoreBeforePropertyChanged(propName, newValue, oldValue) {
+            //     console.log(propName + ": " + newValue);
+            //      return false;
+            // },
+                      
+            render() {
+                const tripled = function() { return this.counterStore.value * 3; };
+                
+                function quadrupeled() {
+                    return this.counterStore.value * 4;
+                }
+
+                return () => `
+                    <div>${new Date()}b</div>
+                    <div>Count: ${this.counterStore.value} <button onclick="${() => this.counterStore.value++}">++</button></div>
+                    <div>Double count: ${this.counterStore.doubled+1}</div>
+                    <div>Triple count: ${-tripled}</div>
+                    <div>Quadrupled count: ${quadrupeled()}</div>
+                `;
+            }
+        });
+
+
+
+        // component("counter-component", {
+        //     // Regular property: If count changes, only depending parts are rerendered
+        //     count: 10,
+
+        //     countBeforeChanged(newValue, oldValue) {
+        //         if (newValue <= 20)
+        //             return true;
+        //         else
+        //             return false;
+        //     },
+
+        //     countAfterChanged(newValue, oldValue) {
+        //         console.log(newValue);
+        //     },
+
+        //     // Derived property: If count changes, inverted changes too
+        //     // and depending parts are rerendered
+        //     inverted: function() { return -this.count; },
+
+        //     // Regular method: This is not tracked and only evaluated on first rendering
+        //     doubled() {
+        //         return this.count * 2;
+        //     },
+
+        //     // Regular method: This is not tracked
+        //     increment() {
+        //         this.count++;
+        //     },
+
+        //     render() {
+        //         // Derived variable: If count changes, tripled automatically
+        //         // changes too and depending parts are rerendered
+        //         const tripled = function() { return this.count * 3; };
+                
+        //         // Regular function: This is only evaluated once and not tracked
+        //         function quadrupeled() {
+        //             return this.count * 4;
+        //         }
+
+        //         return () => `
+        //             <div>Last update: ${new Date()}</div>
+        //             <button onclick="${this.increment}">++</button>
+        //             <button onclick="${() => this.count--}">--</button>
+
+        //             <ul>
+        //                 <li>Count: ${this.count}</li>
+        //                 <li>Inverted (updated): ${this.inverted}</li>
+        //                 <li>Doubled + 1 (not updated): ${this.doubled() + 1}</li>
+        //                 <li>Tripled * 2 (updated): ${tripled * 2}</li>
+        //                 <li>Quadrupled (not updated): ${quadrupeled()}</li>
+        //             </ul>
+        //         `;
+        //     }
+        // });
+    </script>
+</head>
+<body>
+    <h1>Counter app (function style)</h1>
+    <counter-component></counter-component>
+    <counter-component count="20"></counter-component>
+</body>
+</html>
