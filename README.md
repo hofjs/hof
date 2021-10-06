@@ -532,6 +532,8 @@ const { component, HofHtmlElement } = require("@hofjs/hofjs/lib/cjs/hof");
 <script src="pathToNodeFolderOfApp/node_modules/@hofjs/hofjs/lib/nomodule/hof.js"></script>
 ```
 
+There is also a [starter template](https://github.com/hofjs/starter) available for new projects that includes all required packages and supports Hot Module Reloading.
+
 
 ## Documentation
 
