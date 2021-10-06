@@ -524,4 +524,4 @@ You can contribute by sending pull requests to [this repository](https://github.
 
 ## License
 
-Hof.js is [MIT licensed](./LICENSE).
+Hof.js is [MIT licensed](./LICENSE.md).
