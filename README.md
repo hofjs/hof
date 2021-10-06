@@ -508,11 +508,29 @@ However, frameworks are usually preferred to pure web standard solutions, since 
 
 ## Installation
 
-Hof.js can be installed by including the nomodule script file hof.js. Optionally, HofRouter can be installed by including the nomodule script file hofrouter.js.
+Hof.js can be installed by including the nomodule script file hof.js. Additionally modular js builds are available and a TypeScript version.
 
-Additionally modular js builds are available and a TypeScript version.
+This framework can also be installed by using npm.
 
-That's all that is required.
+```
+npm install -g @hofjs/hofjs
+```
+
+This package contains builds in esm, cjs and nomodules formats. While cjs is suitable for server-side JS projects (Node projects), esm is the standard for client-side JS projects. To support older browsers without JS module support or to realize a small web application without requiring JavaScript modules, the nomodules variant can be used.
+
+The following examples show the different import types.
+
+```js
+import { component, HofHtmlElement } from "@hofjs/hofjs/lib/esm/hof";
+```
+
+```js
+const { component, HofHtmlElement } = require("@hofjs/hofjs/lib/cjs/hof");
+```
+
+```html
+<script src="pathToNodeFolderOfApp/node_modules/@hofjs/hofjs/lib/nomodule/hof.js"></script>
+```
 
 
 ## Documentation
