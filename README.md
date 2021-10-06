@@ -458,7 +458,7 @@ There is no special feature for the implementation of services. So these can be 
 
 ### Routing
 
-Routing is supported by HofRouter, a class specifically designed to be used with this framework. HofRouter also focusses on web standards based usage. This means you can use classic &lt;a&gt; elements instead of special router components. To achieve this, you can specify the destination routes for links using a router protocol. Alternatively, programmatic routing is possible via the HofRouter class. Similar to the illustrated observability concepts, there are also hooks that are called before or after navigation and that can be used to cancel navigation. Additionally, nested routing of arbitrary level is supported.
+Routing is supported by [HofRouter](https://github.com/hofjs/hofrouter), a class specifically designed to be used with this framework. HofRouter also focusses on web standards based usage. This means you can use classic &lt;a&gt; elements instead of special router components. To achieve this, you can specify the destination routes for links using a router protocol. Alternatively, programmatic routing is possible via the HofRouter class. Similar to the illustrated observability concepts, there are also hooks that are called before or after navigation and that can be used to cancel navigation. Additionally, nested routing of arbitrary level is supported.
 
 
 ### Class style components
