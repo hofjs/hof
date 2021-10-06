@@ -1,9 +1,34 @@
 {
-    "name": "hof.js",
-    "description": "High Observability Framework",
-    "version": "0.0.1",
-    "license": "MIT",
-    "scripts": {
-      "build": "npx minify src/hof.js > dist/hof.min.js"
-    }
+  "name": "@hofjs/hofjs",
+  "version": "0.0.1",
+  "description": "High Observability Framework",
+  "author": "Hof.js contributors",
+  "repository": "https://github.com/hofjs/hof",
+  "license": "MIT",
+  "keywords": [
+    "framework",
+    "observability"
+  ],
+  "main": "./lib/cjs/hof.js",
+  "module": "./lib/esm/hof.js",
+  "types": "./lib/esm/hof.d.ts",
+  "browser": "./lib/nomodule/hof.js",
+  "scripts": {
+    "clean": "rd /s /q lib 2>nul && rd /s /q samples\\ts\\lib 2>nul || exit 0",
+    "build": "yarn build:esm && yarn build:cjs && yarn build:nomodule && yarn build:samples",
+    "build:esm": "tsc",
+    "build:cjs": "tsc --module commonjs --outDir lib/cjs",
+    "build:nomodule": "yarn esbuild src/esbuild-wrapper/hof.esbuild.ts --bundle --minify --sourcemap=external --outfile=lib/nomodule/hof.js",
+    "build:samples": "tsc --project samples/ts/counterapp/tsconfig.json && tsc --project samples/ts/personlistapp/tsconfig.json",
+    "build:debug": "yarn esbuild src/esbuild-wrapper/hof.esbuild.ts --bundle --sourcemap=external --outfile=lib/nomodule/hof.js",
+    "prepublishOnly": "yarn build"
+  },
+  "devDependencies": {
+    "esbuild": "^0.12.9",
+    "typescript": "^4.0.2"
+  },
+  "files": [
+    "/lib"
+  ],
+  "dependencies": {}
 }

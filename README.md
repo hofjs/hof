@@ -5,7 +5,7 @@ Hof.js is a modern framework for the development of Single Page Applications, wh
 ## Key features
 This framework has the following advantages, among others:
 * **Extremely simple implementation** of complex apps based on Web Components and other web standards such as template strings is supported, which means that only minimal code is required to write even complex components and apps.
-* **Automatic deep state management** of variables, i.e. persons.push(newPerson) or even person.address.name=newName are recognized and lead to the rerendering of the UI - but only exactly those parts of the UI that depend on person.address.name - and all this without the overhead of a Virtual DOM or Virtual Proxies.
+* **Automatic deep state observability** of variables, i.e. persons.push(newPerson) or even person.address.name=newName are recognized and lead to the rerendering of the UI - but only exactly those parts of the UI that depend on person.address.name - and all this without the overhead of a Virtual DOM or Virtual Proxies.
 * **Incremental enhancement of existing web applications** because individual components can be added to any web application created with another framework, as they are just web components.
 * **Functional development is supported** as an alternative to class-based approaches.
 * **Easy start of development with no dependencies is possible**, because no transpiler, CLI or tool is needed.  It is enough to include the framework which is only a few KB in size.
@@ -20,22 +20,33 @@ This framework is in early alpha and not production ready. Features can change a
 ### Implementation of a simple counter component
 
 ```js
- component("counter-component", {
+component("counter-component", {
     count: 10,
 
+    increment() { this.count++; },
+
     render() {
+        const heading = "Counter";
+
         return () => `
-            <div>Counter: ${this.count}</div>
-            <button onclick="${() => this.count++}">++</button>`;
+            <h1>${heading}</h1>            
+            <div>Count: ${this.count}</div>
+            <button onclick="${this.increment}">++</button>
+            <button onclick="${() => this.count--}">--</button>`;
+            <div>Last update: ${new Date()}</div>
     }
 });
 ```
 Description:
-* Function **component()** is used to create a new Web Component with tag **&lt;counter-component&gt;**.
-* Property **count** with **default value 10** is created. This gets **automatically exposed as attribute and property**.
+* Function **component()** creates a new Web Component with tag **&lt;counter-component&gt;**.
+* Property **count** with **default value 10** is created. This gets **exposed as html attribute and js property**.
+* Method **increment** is provided to **add 1** to observed property.
+* For decrementation, the method body **this.count--** is provided **inline**.
 * In function **render**, **markup is returned** as a lazy evaluable function:
-    * **Properties and functions** can be easily **referenced in template strings**.
-    * **A change** of a property automatically **rerenders** the component - but **only the smallest part that depends on the property**, in the example the div element.
+    * **Properties and methods** can be **referenced in template strings**.
+    * **A change** of a property **rerenders only the smallest part of the component that depends on the property**, in the example the div element.
+    * **Local variables** like **heading** can be used. Like properties, they support **deep observability**. However they should be avoided in favor of simple render functions and component nesting.
+    * **Abitrary JS expressions are supported** within template literals, e.g. **new Date()**.
 
 Main advantages:
 * **No special syntax** has to be learned:
@@ -44,16 +55,229 @@ Main advantages:
   * **No magic keywords or directives** such as ng-if, ...
 * **Attributes** are **named** as in **regular HTML markup**:
   * **Pure HTML element attributes** instead of JS attribute names (onclick instead of onClick) and no special constructs like @click, on:click etc.
-* **State tracking** of variables is **automatically handled** by the framework:
+* **Observability** of variables is **automatically handled** by the framework:
   * **Variables do not have to be made trackable** first via approaches like useState() or proxies, but a new value can be assigned directly via this.variable.
   * **If a state variable is changed**, the **smallest part of the UI** that depends on the state variable **is rerendered**, in the example the content of the div element.
 * **Simple development** is supported:
   * **No transpiler infrastructure** is needed as valid JavaScript is used directly.
   * **IDEs provide best support even without extensions/plugins** since the code is valid JS.
 
+
+
+## Derived and watched properties/variables
+
+### Derived properties/variables
+
+**Derived properties and variables** can be defined, which **are recalculated and trigger a partial rerendering whenever one of the dependent variables or properties changes its value**.
+
+Derived properties are simply **defined by assigning an function instead of an initial value to a named property or variable**. In the example, **inverted** and **tripled** are **automatically recalculated whenever the value of the variable count** changes. 
+
+```js
+component("counter-component", {
+    // Regular property: If count changes, only depending parts of html are updated
+    count: 10,
+
+    // Derived property: If count changes, inverted changes too
+    // and depending parts of html are updated
+    inverted: function() { return -this.count; },
+
+    // Regular method: This is not tracked and only evaluated on first rendering
+    doubled() {
+        return this.count * 2;
+    },
+
+    // Regular method: This is not tracked
+    increment() {
+        this.count++;
+    },
+
+    render() {
+        // Derived variable: If count changes, tripled automatically
+        // changes too and depending parts are updated
+        const tripled = function() { return this.count * 3; };
+        
+        // Regular variable: This ist not tracked
+        const PI = 3.14;
+
+        // Regular function: This is not tracked and only evaluated once
+        function quadrupeled() {
+            return this.count * 4;
+        }
+
+        return () => `
+            <div>Last update: ${new Date()}</div>
+            <button onclick="${this.increment}">++</button>
+            <button onclick="${() => this.count--}">--</button>
+
+            <ul>
+                <li>Count: ${this.count}</li>
+                <li>Inverted (updated): ${this.inverted}</li>
+                <li>Doubled + 1 (not updated): ${this.doubled() + 1}</li>
+                <li>Tripled * 2 (updated): ${tripled * 2}</li>
+                <li>Quadrupled (not updated): ${quadrupeled()}</li>
+                <li>PI (not updated): ${this.PI}</li>
+            </ul>
+        `;
+    }
+});
+```
+
+### Watched properties/variables
+
+The framework supports **hooks** to watch property changes and optionally abort them. They have the **name of the property followed by** the suffix **BeforeChanged** or **AfterChanged**. If a **property named count** changes, the **following hooks are called** by the framework:
+
+```js
+countBeforeChanged(newValue, oldValue) // called before new value is applied to property - adoption of new value can be aborted by returning false
+countAfterChanged(newValue, oldValue) // called if and after new value was successfully applied to property
+```
+
+This concept can be illustrated by the following example code which limits the counter to a maximum value of 20.
+
+```js
+component("counter-component", {
+    // Regular property: If count changes, only depending parts are rerendered
+    count: 10,
+
+    countBeforeChanged(newValue, oldValue) {
+        if (newValue <= 20)
+            return true;
+        else
+            return false;
+    },
+
+    countAfterChanged(newValue, oldValue) {
+        console.log(newValue);
+    },
+
+    // ...
+}
+```
+
+
+## Stores
+
+### Basic concept
+
+In other frameworks, the **concept of stores allows to share state between different components** without the need to pass down state from a parent to various deeply nested child components.
+
+**This framework does not include a store concept, because its deep observability functionality makes concepts like that obsolete.** Simple JavaScript objects can be used to externalize state.
+
+To simplify understanding, corresponding objects are referred to here as Store, even if they are pure JS objects.
+
+The following example illustrates the basic concept.
+
+```js
+const counterStore = {
+    value: 10,
+
+    increment() { this.value++; }, 
+};
+
+component("counter-component", {
+    counterStore,
+    
+    render() {
+        let doubled = function() { return this.counterStore.value * 2; }
+        return () => `
+            <div>${new Date()}</div>
+            <div>Count: ${this.counterStore.value}</div>
+            <button onclick="${this.counterStore.increment}">++</button>
+            <button onclick="${() => this.counterStore.value++}">++</button>
+            <div>Double count: ${doubled}</div>
+        `;
+    }
+});
+```
+
+Corresponding markup of html page:
+```html
+<html>
+    <head>...</head>
+    <body>
+        <h1>Counter app (function style)</h1>
+        <counter-component></counter-component>
+        <counter-component count="20"></counter-component>
+    </body>
+</html>
+```
+
+As you can see, instead of a count variable, an object is used as a property, which is defined outside the component. The object can contain any properties and also methods for defined changing of the properties. The code here works analogous to the previous examples, i.e. when a property of the referenced counterStore is changed, the part of the using component that depends on the changed property is automatically updated. Because both counter components share the same external object, by clicking one of the counter components the other is although updated.
+
+In contrast to other frameworks no special concepts such as mutators or actions are required, because the same observability concept used in components is used here.
+
+All observability concepts explained in the component-oriented examples above are available here. This means derived properties and local variables work not only within a component but also within referenced objects such as the counterStore object. The same applies to the BeforeChanged and AfterChanged hooks.
+
+```js
+const counterStore = {
+    value: 10,
+    doubled: function() { return this.value * 2 },
+
+    valueBeforeChanged(newValue, oldValue) {
+        if (newValue <= 20) return true;
+        else return false;
+    },
+    valueAfterChanged(newValue, oldValue) {
+        console.log(newValue);
+    },
+
+    increment() { this.value++; }, 
+    decrement() { this.value--; },
+};
+
+component("counter-component", {
+    counterStore,
+                
+    render() {
+        return () => `
+            <div>${new Date()}b</div>
+            <div>Count: ${this.counterStore.value} <button onclick="${() => this.counterStore.value++}">++</button></div>
+            <div>Double count + 1: ${this.counterStore.doubled+1}</div>
+        `;
+    }
+});
+```
+
+### Advanced hooks
+
+In the above example, the familiar hooks were used within stores. Often, however, it may be a requirement that alternatively or additionally each component that uses a store can decide which value changes it wants to accept from the store. Using the familiar hooks within the component would not help here because they only fire when the property changes. In the above example, the value of the counterStore variable remains the same because only its property value changes.
+
+However, this framework offers **additional hooks** that can be used to react not only to changes in the value of a property, but also to **changes in the value of subproperties**. These are not only usable in the context of stores, but also with classical components with more complex properties, but especially helpful with stores. The following code illustrates the concept.
+
+```js
+const counterStore = { ... };
+
+component("counter-component", {
+    counterStore,
+
+    counterStoreBeforePropertyChanged(propName, newValue, oldValue) {
+        return false;
+    },
+
+    counterStoreAfterPropertyChanged(propName, newValue, oldValue) {
+        console.log(propName + ": " + newValue);
+    },
+                
+    render() {
+        return () => `
+            <div>${new Date()}b</div>
+            <div>Count: ${this.counterStore.value} <button onclick="${() => this.counterStore.value++}">++</button></div>
+            <div>Double count + 1: ${this.counterStore.doubled+1}</div>
+        `;
+    }
+});
+```
+
+As you can see, instead of counterStoreBeforeChanged or counterStoreAfterChanged simply **counterStoreBeforePropertyChanged** or **counterStoreAfterPropertyChanged** is used. These hooks return the **affected property as the first parameter** and then the **new and old value as second and third parameter**. The **hook BeforePropertyChanged allows**, analogous to BeforeChanged, **to cancel the transfer of a value** via its return value. Thus the value in the Store can change, but a component can decide independently whether it wants to take over a value or not.
+
+By combination of hooks on level of stores and components thus global restrictions for all using components can be combined with component-specific restrictions.
+
+
 ## Complex example with nested components
 
-In this example a complete CRUD application to manage a list of persons is implemented - demonstrating component nesting, advanced state management, propagation and hoisting.
+An **important feature** of this framework is that **when adding, updating oder deleting elements of an array**, the framework detects this and **updates exactly the part of the UI that is affected** (i.e. even without concepts such as key attributes of other frameworks, **not the entire list is re-rendered, but only an element is inserted, deleted or changed!**). There is **no need for approaches such as list = [...list, newItem]** and so on. The **framework recognizes array alterations such as push, splice** etc.
+
+This concept and many other features such as component nesting, state management, propagation and hoisting will now be demonstrated using a complex CRUD application for managing a list of people.
+
 
 ### Data class "Person"
 
@@ -123,10 +347,12 @@ component("person-data", {
 * The **component person-data-input is referenced to render a label including an input field**. This is used to display and change the name or age of a selected person.
 * The **component person-data-list is used to display the current list of persons**.
 * As you can see in the code, the **state is simply passed down** by assigning the respective value to an attribute of the Web Component, e.g. the value of this.selected.name is passed to the value attribute of the component person-data-input.
-* **Event handlers do not require any special features** either, but **can simply be passed to a component via attribute**. It is possible to pass a function defined in the component, such as create or edit, or to specify an ad hoc Arrow function on the spot.
+* **Event handlers do not require any special features** either, but **can simply be passed to a component via attribute**.
+
+Hints:
 * As you can see in changeName and changeAge, **it is not necessary to copy the original object like in other frameworks**, so that the framework notices a change and executes a new rendering. **For instance, no statement such as this.persons = [...persons, newPerson] is needed here to register a change to the original object**. This is automatically handled by the framework and makes development easier, more efficient and less error-prone.
-* The supported **state tracking is so powerful that it works even for deeply nested objects**, unlike other frameworks. For example, **for a person.address.street object, street could be changed and all parts of the UI that depend on it would be automatically re-rendered**. The state tracking is smart enough that, for example, if person.address is changed, parts of the UI that depend on person.address.street or person.address.zip are automatically rerendered, but not the parts of the UI that depend on person.company.
-* Although **state tracking** is extremely powerful in this framework, it **has no significant drawbacks in terms of performance**, since no dynamic proxies are used, but only the actually bound parts of a data object are made partially observable via an approach that was specifically designed for this use case.
+* The supported **observability is so powerful that it works even for deeply nested objects**, unlike other frameworks. For example, **for a person.address.street object, street could be changed and all parts of the UI that depend on it would be automatically re-rendered**. The implementation is smart enough that, for example, if person.address is changed, parts of the UI that depend on person.address.street or person.address.zip are automatically rerendered, but not the parts of the UI that depend on person.company.
+
 
 ### Data entry component "&lt;person-data-input&gt;"
 ```js
@@ -192,61 +418,6 @@ This component demonstrates how complex databinding expressions can be. It shoul
 
 This framework offers further features, which will be presented here in an overview.
 
-### Local variables
-In addition to properties, **local variables can also be bound**.
-
-```js
-render() {
-  const someVariable = "World"
-
-  return () => `Hello ${someVariable}`;
-}
-```
-Like properties, **local variables also support deep observability**. Additionally, **multiple variables can be provided**. However local variables should be avoided in favor of simple render functions and component nesting.
-
-### Derived properties
-
-In addition, **derived variables** can also be defined, which **are automatically recalculated and trigger a partial rerendering whenever one of the dependent variables or properties changes its value**. Derived properties are simply defined by writing a function that works with some other variables or properties. To achieve reactive updating, the **live helper is used in the markup**.
-
-```js
-render() {
-  const ageDoubled = () => this.data.selectedPerson.age * 2;
-
-  return () => `
-    <person-data-input
-        value="${live(ageDoubled)} || ''"
-        onchange="${(event) => this.changeAge(event)}">
-    </person-data-input>            
-  `;
-}
-```
-Whenever this.data.selectedPerson.age changes, e.g. by a simple assignment of a new value (e.g. this.data.selectedPerson.age = 20), ageDoubled is automatically changed as well and the part of the UI that depends on this variable is rerendered.
-
-It is important here that also with derived properties a deep observability exists, i.e. also if subproperties of a variable change, changes are tracked, derived properties are recalculated and depending parts of the UI are rerendered.
-
-### Side effects
-
-**Side effects can be used to define functionality that is to be executed whenever a state variable changes**. This is also done by simply writing a function and using the **live helper** in the markup. Usually the side effects are noted at the beginning of the markup.
-
-```js
-render() {
-  const selectedPersonSideEffect = () => console.dir(this.data.selectedPerson);
-
-  return () => `
-    ${live(selectedPersonSideEffect)}
-        
-    <fieldset>
-      ...
-    </fieldset>                    
-    `;
-}
-```
-
-A classic side effect should never return a value. Even if a derived property is required and functionality could be executed at the same time as with a side effect, this should be separated from each other, i.e. a separate side effect should be defined.
-
-It is important here that also with side effects a deep observability exists, i.e. also if subproperties of a variable change, changes are tracked and side effects executed.
-
-
 ### Initialization logic
 
 Initialization logic can be specified within the **construct method**.
@@ -264,77 +435,6 @@ Initialization logic can be specified within the **construct method**.
             // ...
     });
 ```
-
-### Context callbacks
-
-By default, callbacks are passed down from a parent component to a child component. This is the recommended approach. However, for very complex applications with deep object structures, it can be cumbersome to pass a callback down n levels if it is only needed by the component at the very bottom of the tree. For such cases there is the possibility to use so-called **Contextual Callbacks**.
-
-For this no passed callback is called in the child component, but the generic callback **dispatch** is used, which accepts as **first parameter a string value for the action** to be executed and as **second parameter an arbitrary object** with data.
-
-Interested components in the tree can register for callbacks of certain types and specify which methods should be called in their own implementation.
-
-
-```js
-    component("person-data-list", {
-            persons: [],
-                       
-            render() {
-                return ["persons", (person) =>
-                    `<person-data-list-item person="${person}"></person-data-list-item>`
-                ];
-            }
-        });
-
-        component("person-data-list-item", {
-            person: new Person(),
-            
-            render() {
-                return () => `
-                    ${this.person.name} - ${this.person.age} Jahre                            
-                    [<a href="#" onclick="${() => this.dispatch('EDIT_PERSON', this.person)}">Edit</a>]
-                    [<a href="#" onclick="${() => this.dispatch('DELETE_PERSON', this.person)}">Delete</a>]
-                `;
-            }
-        }, "li");
-
-        component("person-data", {
-            selected: new Person(),
-            persons: [new Person("Alex", 21), new Person("Chris", 19), new Person("Mike", 19)],
-
-            changeName(value) { /* ... */ },
-            changeAge(value) { /* ... */ },
-
-            edit(person) { /* ... */ },
-            remove(person) { /* ... */ },
-            save() { /* ... */ },
-            findIndex(person) { /* ... */ },
-
-            callbacks() {
-                return  {
-                    EDIT_PERSON: this.edit,
-                    DELETE_PERSON: this.remove,
-                    CHANGE_NAME: this.changeName,
-                    CHANGE_AGE: this.changeAge
-                }
-            },
-            
-            render() {
-                return () => `
-                    <fieldset>
-                        <person-data-input label="Name" value="${this.selected.name}" action="CHANGE_NAME"></person-data-input>
-                        <person-data-input label="Age" value="${this.selected.age}" action="CHANGE_AGE"></person-data-input>
-                        <button onclick="${this.save}">Speichern</button>
-                    </fieldset>                    
-                    
-                    <person-data-list persons="${this.persons}" edititem="${this.edit}" deleteitem="${this.remove}"></person-data-list>
-                `;
-            }
-        });
-```
-
-
-This approach allows maximum loose coupling, since arbitrary components in the tree can send messages to each other, even if no callbacks were passed down to them manually. The only decisive factor is the definition of standardized constants for the actions or callbacks to be executed.
-
 
 ### Services
 
@@ -354,6 +454,12 @@ There is no special feature for the implementation of services. So these can be 
             // ...
     });
 ```
+
+
+### Routing
+
+Routing is supported by HofRouter, a class specifically designed to be used with this framework. HofRouter also focusses on web standards based usage. This means you can use classic &lt;a&gt; elements instead of special router components. To achieve this, you can specify the destination routes for links using a router protocol. Alternatively, programmatic routing is possible via the HofRouter class. Similar to the illustrated observability concepts, there are also hooks that are called before or after navigation and that can be used to cancel navigation. Additionally, nested routing of arbitrary level is supported.
+
 
 ### Class style components
 
@@ -377,6 +483,12 @@ customElements.define('counter-component', class extends HofHtmlElement {
 For details, please refer to the examples.
 
 
+## Restrictions
+
+Custom elements inherit many events from HtmlElement. If an attempt is made to overwrite a standard event in a custom element, this usually does not work, or even a getter access to set a new event handler causes the property to be executed. Therefore, **in all components implemented using this framework**, classic **event identifiers with prefix on should be avoided** and, for example, **instead of onchange**, an **event should only be named change**.
+
+
+
 ## Why a new framework?
 
 **Current popular frameworks** offer powerful concepts for the implementation of component-oriented applications. However, the components they realize are framework-specific constructs and do not conform to the Web Component standards by default. For most frameworks, this brings the **following disadvantages**:
@@ -387,8 +499,8 @@ For details, please refer to the examples.
 * **Binding of properties and events is solved differently depending upon framework** and it is worked with attributes deviating from the regular HTML element attributes, e.g. prefix "on".
 
 In addition, **popular frameworks have significant limitations in terms of state management and binding capabilities**:
-* **Missing simple state tracking**: If a state variable persons is used and a person is added, the frameworks usually require a new object to be assigned, e.g. persons = [...persons, newPerson]. This is inefficient, cumbersome and error-prone.
-* Also, **changes in deep object structures must be manually accounted for by the developer**, since the state tracking of modern frameworks does not register a change to person.address.name=newName, i.e., there is no rerendering of the components referencing the name property as well (not even a full rendering). This limitation applies even to modern transpiler approaches.
+* **Missing simple observability**: If a state variable persons is used and a person is added, the frameworks usually require a new object to be assigned, e.g. persons = [...persons, newPerson]. This is inefficient, cumbersome and error-prone.
+* Also, **changes in deep object structures must be manually accounted for by the developer**, since the observability supported by modern frameworks does not register a change to person.address.name=newName, i.e., there is no rerendering of the components referencing the name property as well (not even a full rendering). This limitation applies even to modern transpiler approaches.
 * Also, **no simple JS code can be written if stateful components are to be implemented**, since special constructs like useState() are needed for this. The latter is only addressed by transpiler approaches, but does not allow pure JS development, but always requires a transpiler.
 * Also, **some approaches require a Virtual DOM**, which can also bring performance disadvantages compared to an optimized implementation with direct DOM access.
 
@@ -396,7 +508,12 @@ However, frameworks are usually preferred to pure web standard solutions, since 
 
 ## Installation
 
-Hof.js can be installed by including the script file hof.min.js. That's all that is required.
+Hof.js can be installed by including the nomodule script file hof.js. Optionally, HofRouter can be installed by including the nomodule script file hofrouter.js.
+
+Additionally modular js builds are available and a TypeScript version.
+
+That's all that is required.
+
 
 ## Documentation
 
