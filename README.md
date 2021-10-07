@@ -535,6 +535,72 @@ const { component, HofHtmlElement } = require("@hofjs/hofjs/lib/cjs/hof");
 There is also a [starter template](https://github.com/hofjs/starter) available for new projects that includes all required packages and supports Hot Module Reloading.
 
 
+## Usage
+
+Minimal esm example
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal demo</title>
+    <script type="module">
+        // Inline JS - should be outsourced to external file in practice.
+        
+        import { component } from "/node_modules/@hofjs/hofjs/lib/esm/hof.js";
+
+        component("main-app", {
+            render() {
+                return () => `Hello at ${new Date()}`;
+            }
+        });
+    </script>
+</head>
+<body>
+    <p>This must be running on a web server to work, for example the vscode live server.</p>
+
+    <main-app></main-app>
+</body>
+</html>
+```
+
+Minimal cjs example
+```js
+const { component } = require("@hofjs/hofjs/lib/cjs/hof");
+
+// window.customElements polyfill is required for serverside rendering to work
+component("main-app", {
+    render() {
+        return () => `Hello at ${new Date()}`;
+    }
+});
+
+...
+```
+
+
+Minimal nomodules example
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal demo</title>
+    <script src="node_modules/@hofjs/hofjs/lib/nomodule/hof.js"></script>
+    <script>
+        component("main-app", {
+            render() {
+                return () => `Hello at ${new Date()}`;
+            }
+        });
+    </script>
+</head>
+<body>
+    <main-app></main-app>
+</body>
+</html>
+```
+
 ## Documentation
 
 Due to the early stage of development of this framework, no documentation exists yet. However, since it is very much based on JavaScript and web standards and allows intuitive development, the above explanations are usually sufficient to use all framework features.
