@@ -568,7 +568,7 @@ Minimal cjs example
 ```js
 const { component } = require("@hofjs/hofjs/lib/cjs/hof");
 
-// window.customElements polyfill is required for serverside rendering to work
+// window.customElements must be supported on execution platform
 component("main-app", {
     render() {
         return () => `Hello at ${new Date()}`;
