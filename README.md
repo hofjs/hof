@@ -545,7 +545,7 @@ Minimal esm example
 <head>
     <title>Minimal demo</title>
     <script type="module">
-        // Inline JS - should be outsourced to external file in practice.
+        // Inline JS - should be outsourced to external file.
         
         import { component } from "/node_modules/@hofjs/hofjs/lib/esm/hof.js";
 
@@ -566,14 +566,18 @@ Minimal esm example
 
 Minimal cjs example
 ```js
+// window.customElements polyfill must be available to use
+// component helper to create component for server-side rendering
+
 const { component } = require("@hofjs/hofjs/lib/cjs/hof");
 
-component("main-app", {
+const AppComponent = component("main-app", {
     render() {
         return () => `Hello at ${new Date()}`;
     }
 });
 
+const app = new AppComponent();
 ...
 ```
 
