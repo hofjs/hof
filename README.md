@@ -568,7 +568,6 @@ Minimal cjs example
 ```js
 const { component } = require("@hofjs/hofjs/lib/cjs/hof");
 
-// window.customElements must be supported by the platform
 component("main-app", {
     render() {
         return () => `Hello at ${new Date()}`;
