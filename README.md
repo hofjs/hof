@@ -1,6 +1,6 @@
 # Hof.js - High Observability Framework
 
-Hof.js is a modern framework for the development of Single Page Applications, which breaks with many current approaches and allows a development close to the web standards.
+Hof.js is a modern framework for the development of Single Page Applications, which breaks with many current approaches and allows a development close to the web standards. It was created by Walter Kern and is maintained by [Hof.js contributors](https://github.com/hofjs/hof/graphs/contributors).
 
 ## Key features
 This framework has the following advantages, among others:
@@ -8,7 +8,7 @@ This framework has the following advantages, among others:
 * **Automatic deep state observability** of variables, i.e. persons.push(newPerson) or even person.address.name=newName are recognized and lead to the rerendering of the UI - but only exactly those parts of the UI that depend on person.address.name - and all this without the overhead of a Virtual DOM or Virtual Proxies.
 * **Incremental enhancement of existing web applications** because individual components can be added to any web application created with another framework, as they are just web components.
 * **Functional development is supported** as an alternative to class-based approaches.
-* **Easy start of development with no dependencies is possible**, because no transpiler, CLI or tool is needed.  It is enough to include the framework which is only a few KB in size.
+* **Easy start of development with no dependencies is possible**, because no transpiler, CLI or tool is needed. It is enough to include the framework which is only a few KB in size.
 * **IDEs provide best support even without extensions/plugins** since the code is pure JS.
 
 ## State of this framework
