@@ -36,7 +36,7 @@ Description:
 * In predefined function **render**, **markup is returned** as a lazy evaluable function:
     * **Regular html tags such as &lt;h1&gt; can be used**.
     * **Property count is referenced and rendered** within a div element and **rerendered on changes of the count property**
-    * **Button ++ defines onclick event handler that increments the count property**. If the button gets clicked, the count property is updated and **only the element that includes a reference to the count property gets rerendered**.
+    * **Button ++ defines onclick event handler that increments the count property**. If the button gets clicked, the count property is updated and **only the div element gets rerendered because it includes a reference to the count property**.
 
 Main advantages:
 * **No special syntax** has to be learned:
