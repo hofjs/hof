@@ -42,7 +42,7 @@ Description:
 * Property **count** with **default value 10** is created. This gets **exposed as html attribute and js property**.
 * Method **increment** is provided to **add 1** to observed property.
 * For decrementation, the method body **this.count--** is provided **inline**.
-* In function **render**, **markup is returned** as a lazy evaluable function:
+* In predefined function **render**, **markup is returned** as a lazy evaluable function:
     * **Properties and methods** can be **referenced in template strings**.
     * **A change** of a property **rerenders only the smallest part of the component that depends on the property**, in the example the div element.
     * **Local variables** like **heading** can be used. Like properties, they support **deep observability**. However they should be avoided in favor of simple render functions and component nesting.
@@ -56,8 +56,10 @@ Main advantages:
 * **Attributes** are **named** as in **regular HTML markup**:
   * **Pure HTML element attributes** instead of JS attribute names (onclick instead of onClick) and no special constructs like @click, on:click etc.
 * **Observability** of variables is **automatically handled** by the framework:
-  * **Variables do not have to be made trackable** first via approaches like useState() or proxies, but a new value can be assigned directly via this.variable.
-  * **If a state variable is changed**, the **smallest part of the UI** that depends on the state variable **is rerendered**, in the example the content of the div element.
+  * **Variables do not have to be made trackable** via approaches like useState() or proxies first, but a **new value can be assigned directly via this.variable = newValue**.
+  * **If a state variable is changed**, the smallest part of the **UI that depends on the state variable is re-rendered**.
+  * **Array changes and sub...subproperty changes are also automatically observable** and re-render exactly the parts of the UI that depend on them.
+  * **Calculated properties can simply be defined as pure functions**! Callbacks to value changes are also supported (even in pure JS objects).
 * **Simple development** is supported:
   * **No transpiler infrastructure** is needed as valid JavaScript is used directly.
   * **IDEs provide best support even without extensions/plugins** since the code is valid JS.
