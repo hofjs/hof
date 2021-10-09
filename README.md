@@ -487,7 +487,7 @@ For details, please refer to the examples.
 
 ## Restrictions
 
-Custom elements inherit many events from HtmlElement. If an attempt is made to overwrite a standard event in a custom element, this usually does not work, or even a getter access to set a new event handler causes the property to be executed. Therefore, **in all components implemented using this framework**, classic **event identifiers with prefix on should be avoided** and, for example, **instead of onchange**, an **event should only be named change**.
+Custom elements inherit many events from HtmlElement. If an attempt is made to overwrite a standard event in a custom element, this usually does not work, or even a getter access to set a new event handler causes the property to be executed. Therefore, **in all components implemented using this framework**, classic **event identifiers with prefix "on" should be avoided** and, for example, **instead of "onchange"**, an **event should only be named "change"**.
 
 
 
