@@ -23,30 +23,20 @@ This framework is in early alpha and not production ready. Features can change a
 component("counter-component", {
     count: 10,
 
-    increment() { this.count++; },
-
     render() {
-        const heading = "Counter";
-
-        return () => `
-            <h1>${heading}</h1>            
+        return () => `<h1>Counter component</h1>
             <div>Count: ${this.count}</div>
-            <button onclick="${this.increment}">++</button>
-            <button onclick="${() => this.count--}">--</button>`;
-            <div>Last update: ${new Date()}</div>
+            <button onclick="${() => this.count++}">++</button>`;
     }
 });
 ```
 Description:
-* Function **component()** creates a new Web Component with tag **&lt;counter-component&gt;**.
-* Property **count** with **default value 10** is created. This gets **exposed as html attribute and js property**.
-* Method **increment** is provided to **add 1** to observed property.
-* For decrementation, the method body **this.count--** is provided **inline**.
+* Function **component()** creates and registers a new custom element with tag **&lt;counter-component&gt;**.
+* Property **count** with **default value 10** is created. This gets **exposed as html attribute and js property** of the custom element.
 * In predefined function **render**, **markup is returned** as a lazy evaluable function:
-    * **Properties and methods** can be **referenced in template strings**.
-    * **A change** of a property **rerenders only the smallest part of the component that depends on the property**, in the example the div element.
-    * **Local variables** like **heading** can be used. Like properties, they support **deep observability**. However they should be avoided in favor of simple render functions and component nesting.
-    * **Abitrary JS expressions are supported** within template literals, e.g. **new Date()**.
+    * **Regular html tags such as &lt;h1&gt; can be used**.
+    * **Property count is referenced and rendered** within a div element and **rerendered on changes of the count property**
+    * **Button ++ defines onclick event handler that increments the count property**. If the button gets clicked, the count property is updated and **only the element that includes a reference to the count property gets rerendered**.
 
 Main advantages:
 * **No special syntax** has to be learned:
