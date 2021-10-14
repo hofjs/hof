@@ -19,6 +19,8 @@ This framework is in early alpha and not production ready. Features can change a
 
 ### Implementation of a simple counter component
 
+counter-component.js
+
 ```js
 component("counter-component", {
     count: 10,
@@ -30,6 +32,22 @@ component("counter-component", {
     }
 });
 ```
+
+index.html
+
+```html
+<html>
+    <head>
+        <script src="node_modules/@hofjs/hofjs/lib/nomodule/hof.js"></script>
+        <script src="counter-component.js"></script>
+    </head>
+    <body>
+        <counter-component></counter-component>
+        <counter-component count="20"></counter-component>
+    </body>
+</html>
+```
+
 Description:
 * Function **component()** creates and registers a new custom element with tag **&lt;counter-component&gt;**.
 * Property **count** with **default value 10** is created. This gets **exposed as html attribute and js property** of the custom element.
@@ -37,6 +55,10 @@ Description:
     * **Regular html tags such as &lt;h1&gt; can be used**.
     * **Property count is referenced and rendered** within a div element and **rerendered on changes of the count property**
     * **Button ++ defines onclick event handler that increments the count property**. If the button gets clicked, the count property is updated and **only the div element gets rerendered because it includes a reference to the count property**.
+* In **index.html** two **counter components are defined**:
+    * **The first component uses default value 10** as start value for the counter.
+    * **The second component uses specified value 20** as start value for the counter.
+    * **If a user clicks on the increment button** of a counter component, its **count property is updated** and the **depending part of the UI gets re-rendered**.
 
 Main advantages:
 * **No special syntax** has to be learned:
