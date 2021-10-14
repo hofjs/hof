@@ -48,10 +48,6 @@ index.html
 </html>
 ```
 
-Visualization:
-
-![Alt Text](IntroductoryExample.gif)
-
 Description:
 * Function **component()** creates and registers a new custom element with tag **&lt;counter-component&gt;**.
 * Property **count** with **default value 10** is created. This gets **exposed as html attribute and js property** of the custom element.
