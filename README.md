@@ -129,7 +129,7 @@ component("counter-component", {
                 <li>Doubled + 1 (not updated): ${this.doubled() + 1}</li>
                 <li>Tripled * 2 (updated): ${tripled * 2}</li>
                 <li>Quadrupled (not updated): ${quadrupeled()}</li>
-                <li>PI (not updated): ${this.PI}</li>
+                <li>PI (not updated): ${PI}</li>
             </ul>
         `;
     }
