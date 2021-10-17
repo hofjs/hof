@@ -129,7 +129,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
           this._updatePropertyObservers([name, value]);
       }
-
+      
       // Make new objects observable
       if (this._allBindVariables)
           this._makeBindVariableObservable(name);
@@ -237,7 +237,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
               if(!Array.isArray(propObj))
                   this._makeObjectObservable(propObj, lastProp, bindVariableName, propertyPath);
               else
-                  this._makeArrayObservable(propObj, bindVariableName);
+                  this._makeArrayObservable(propObj, bindVariableName, props[i-1] ?? "");
           }
 
           propObj = propObj[props[i]];
@@ -289,7 +289,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
       if (this._registerNewObserver(obj, observerProperty)) {
         Object.defineProperty(obj, observerProperty, {
-            get: function() { return _value; }.bind(self),
+            get: function() { return _value; }.bind(this),
             set: function(v: Object) {
                 const _oldValue = _value;
 
@@ -318,14 +318,18 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
                     self._callBindVariableAfterChangedHook(obj, observerProperty, _value, _oldValue);
                   }         
-            }.bind(self),
+            }.bind(this),
             enumerable: true,
             configurable: true
         });
+
+        // Adapt binding for methods in properties, so methods use this of surrounding object literal
+        if (propertyPath.includes(".") && obj[observerProperty].bind)
+            obj[observerProperty] = obj[observerProperty].bind(obj);
       }
   }
 
-  _makeArrayObservable(arr: Array<Object>, observerProperty: string) {
+  _makeArrayObservable(arr: Array<Object>, observerProperty: string, componentProperty: string) {
     if (this._registerNewObserver(arr, observerProperty)) {
           arr._emit = function(index: number, items: Object[], deletedItems: Object[]) {
               // Use partial rendering only for change or delete operations with 1 element
@@ -338,8 +342,13 @@ export abstract class HofHtmlElement extends HTMLElement  {
               this.lastActionObject = deletedItems.length > 0 ? deletedItems[deletedItems.length - 1] : items[this.lastActionIndex];
 
               // Notify observers
-              this._observers.forEach((properties, component) => properties.forEach(
-                  property => component.setProperty(property, this)));
+              this._observers.forEach((properties, component) => properties.forEach(property => {
+                    // Array is contained within other property, so refresh outer property instead
+                    if (componentProperty != observerProperty)
+                        component.setProperty(property, component.getProperty(property, undefined))
+                    else // Array is property, so refresh array
+                        component.setProperty(property, this);  
+                }));
 
               // Reset action
               this.lastActionMethod = null;  this.lastActionIndex = null; this.lastActionObject = null;
@@ -625,15 +634,15 @@ export abstract class HofHtmlElement extends HTMLElement  {
                   // (e.g. if data.selectedPerson.name is changed, only attributes with bindings to data, data.selectedPerson
                   // and data.selectedPerson.name, but e.g. not on data.selectedPerson.age).
                   if (!bindVariableValue.lastActionPropertyPath || attrExpr.template && attrExpr.template.includes(bindVariableValue.lastActionPropertyPath)) {
-                      // Partielle Updates bei Collections triggern
+                      // Trigger partial updates for collections
                       if (newValue.lastActionMethod) {
                           if (element instanceof HofHtmlElement)
                             element._renderUpdate(newValue);
-                          // console.log(`[${element.tagName ?? "TEXT"}] Partial update of ${attrName}: ${newValue.lastActionMethod} ${JSON.stringify(newValue[newValue.lastActionIndex])}`);
+                          // console.log(`[${element.nodeName ?? "TEXT"}] Partial update of ${attrName}: ${newValue.lastActionMethod} ${JSON.stringify(newValue[newValue.lastActionIndex])}`);
                       }
                       else {
                           element[attrName] = newValue;
-                          // console.log(`[${element.tagName ?? "TEXT"}]: Full update of ${attrName}: ${JSON.stringify(newValue)}`);
+                          // console.log(`[${element.nodeName ?? "TEXT"}]: Full update of ${attrName}: ${JSON.stringify(newValue)}`);
                       }
                   }
               }
