@@ -11,13 +11,15 @@ interface BindVariableExpressionsMap {
 interface ObjectObservable {
     lastActionMethod: string;
     lastActionIndex: number;
+    lastActionObject: Object;
     lastActionPropertyPath: string;
 
+    _observableUniqueName: string;
     _observers: Map<HofHtmlElement, string[]>;
 }
 
 interface ArrayObservable<T> extends ObjectObservable { 
-    _emit: (index: number, items: T[]) => Array<T>;
+    _emit: (index: number, items: T[], deletedItems: T[]) => Array<T>;
 
     edit: (index: number, element: T) => T[];
     delete: (index: number) => T[];
@@ -43,16 +45,16 @@ export abstract class HofHtmlElement extends HTMLElement  {
   _root: HTMLElement;
   _shadow: ShadowRoot;
 
-  _observersForBindVariable: Map<string, Map<DOMElement, string[]>> = new Map(); // Map<BindVariableName, Map<DOMElement, AttributeName[]>>
-  _observerExpressions: Map<DOMElement, Map<string, AttributeExpression>> = new Map(); // Map<DOMElement, Map<AttributeName, AttributeExpression>>
-
   _properties: PropertyMap = {}; // Global properties (of component)
   _locals: PropertyMap = {}; // Local variables (of render function), including list iteration variables such as person0, person1, ...
   
-  _allBindVariables: PropertyMap = null;
-  _allBindExpressions: BindVariableExpressionsMap = {};
+  _allBindVariables: PropertyMap = null; // All bind variables, derived from properties and locals
+  _allBindExpressions: BindVariableExpressionsMap = {}; // All bind variable expressions used in templates
 
-  _renderIteration: number = -1;
+  _observersForBindVariable: Map<string, Map<DOMElement, string[]>> = new Map(); // Map<BindVariableName, Map<DOMElement, AttributeName[]>>
+  _observerExpressions: Map<DOMElement, Map<string, AttributeExpression>> = new Map(); // Map<DOMElement, Map<AttributeName, AttributeExpression>>
+
+  _renderIteration: number = -1; // Each rendering process increments id (rendering of a list of n elements means n incrementations, each update an additional one)
 
   _listTemplate: TemplateStringFunction = null;
   _listData: Object[] = [];
@@ -152,7 +154,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
       const expression = html.toString();
       const listIt = expression.substring(expression.indexOf('(')+1, expression.indexOf(')'));
 
-      // Liste zum Zeitpunkt des Aufrufs noch nicht aufgelöst (first rendering), d.h. noch Wert wie ${data}
+      // List not yet resolved at time of call (first rendering), i.e. still value like ${data}
       if (typeof data == "string") return;
 
       this._listData = data;
@@ -165,6 +167,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
       for (const listItem of this._listData) {
           locals[this._listIt] = listItem;
+          locals[this._listIt]._observableUniqueName = this._listIt + (this._renderIteration+1);
           this._renderFull(html, locals);
       }
   }
@@ -324,29 +327,35 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
   _makeArrayObservable(arr: Array<Object>, observerProperty: string) {
     if (this._registerNewObserver(arr, observerProperty)) {
-          arr._emit = function(index: number, items: Object[]) {
+          arr._emit = function(index: number, items: Object[], deletedItems: Object[]) {
               // Use partial rendering only for change or delete operations with 1 element
               if (items.length == 0) this.lastActionMethod = "DELETE";
               else if (index == null) this.lastActionMethod = "ADD";
               else if (items.length == 1) this.lastActionMethod = "EDIT";
               this.lastActionIndex = index ?? this.length - 1;
 
+              // Return last added, updated or deleted element
+              this.lastActionObject = deletedItems.length > 0 ? deletedItems[deletedItems.length - 1] : items[this.lastActionIndex];
+
               // Notify observers
               this._observers.forEach((properties, component) => properties.forEach(
                   property => component.setProperty(property, this)));
 
               // Reset action
-              this.lastActionMethod = null;  this.lastActionIndex = null;
+              this.lastActionMethod = null;  this.lastActionIndex = null; this.lastActionObject = null;
 
               return this;
           }
           arr.push = function(...items: Object[]) {
-              Array.prototype.push.call(this, ...items); arr._emit(null, items); return arr.length;
+              Array.prototype.push.call(this, ...items);
+              arr._emit(null, items, []);
+              
+              return arr.length;
           };
           arr.splice = function(index: number, deleteCount: number, ...items: Object[]) {
               const deletedItems = Array.prototype.splice.call(this, index, deleteCount, ...items);
               if (deleteCount <= 1)
-                arr._emit(index, items);
+                arr._emit(index, items, deletedItems);
 
             return deletedItems;
           }
@@ -400,28 +409,60 @@ export abstract class HofHtmlElement extends HTMLElement  {
           this._processElementBinding(this._root.childNodes[index], bindVariables, bindVariableNames);
   }
 
+  _removeObserversForBindVariable(bindVariableToDelete: string) {
+      // Remove observer expressions
+      if (this._observersForBindVariable.has(bindVariableToDelete))
+        for (const [comp] of this._observersForBindVariable.get(bindVariableToDelete)) {
+            for (const [attr, expr] of this._observerExpressions.get(comp)) {
+                if (expr.bindVariableNames.includes(bindVariableToDelete))
+                    this._observerExpressions.get(comp).delete(attr);                
+            }
+
+            if (this._observerExpressions.get(comp).size == 0)
+                this._observerExpressions.delete(comp);
+        }
+
+        // Remove observers for bind variable
+        this._observersForBindVariable.delete(bindVariableToDelete);
+ 
+        // Remove bind variable
+        delete this._allBindVariables[bindVariableToDelete];
+
+        // Remove all bind expressions for bind variable
+        delete this._allBindExpressions[bindVariableToDelete];
+  }
+
   _renderUpdate(newBindVariableValue: Object) {
       // Only partially update components that render list, since for other components
       // other element would be added/deleted
       if (this._listTemplate != null) {
           this._locals[this._listIt] = this._listData[newBindVariableValue.lastActionIndex];
 
-          const [elements, bindVariables, bindVariableNames] = this._parseHTML(this._listTemplate, { [this._listIt]: this._listData[newBindVariableValue.lastActionIndex] });
-
-          if (newBindVariableValue.lastActionMethod == "ADD") {
-              if (this._root.childNodes[newBindVariableValue.lastActionIndex])
-                  this._root.insertBefore(elements[0], this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex-1].nextSibling);
-              else
-                  this._root.appendChild(elements[0]);
-
-              this._processElementBinding(this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex], bindVariables, bindVariableNames);
+          // Remove node
+          if (newBindVariableValue.lastActionMethod == "DELETE") {
+            this._removeObserversForBindVariable(newBindVariableValue.lastActionObject._observableUniqueName);
+            this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex].remove();
           }
-          else if (newBindVariableValue.lastActionMethod == "EDIT") {
-              this._root.replaceChild(elements[0], this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex])
-              this._processElementBinding(this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex], bindVariables, bindVariableNames);
-          }
-          else if (newBindVariableValue.lastActionMethod == "DELETE")
-              this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex].remove();
+          else {
+            this._locals[this._listIt]._observableUniqueName = this._listIt + (this._renderIteration+1);
+
+            // Parse new html for added or updated content
+            const [elements, bindVariables, bindVariableNames] = this._parseHTML(this._listTemplate, { [this._listIt]: this._listData[newBindVariableValue.lastActionIndex] });
+
+            // Add or replace html
+            if (newBindVariableValue.lastActionMethod == "ADD") {
+                if (this._root.childNodes[newBindVariableValue.lastActionIndex])
+                    this._root.insertBefore(elements[0], this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex-1].nextSibling);
+                else
+                    this._root.appendChild(elements[0]);
+
+                this._processElementBinding(this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex], bindVariables, bindVariableNames);
+            }
+            else if (newBindVariableValue.lastActionMethod == "EDIT") {
+                this._root.replaceChild(elements[0], this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex])
+                this._processElementBinding(this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex], bindVariables, bindVariableNames);
+            }
+        }
       }
   }
 
@@ -549,7 +590,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
           if (!variableObservable.has(element)) variableObservable.set(element, []);
 
           if (bindVariables[bindVariableName].bind)
-              bindVariables[bindVariableName] = bindVariables[bindVariableName].bind(this); // this von Parent an Child mitgeben bei nach unten gereichten Callbacks
+              bindVariables[bindVariableName] = bindVariables[bindVariableName].bind(this); // pass this from parent to child on callbacks that are passed down
 
           variableObservable.get(element).push(attr);
       }
@@ -619,7 +660,7 @@ export function component(name: string, obj: object, tag = "div"): new () => Hof
           if (Array.isArray(func)) {
               const renderFuncs: Function[] = [];
 
-              if (func.length > 0 && Array.isArray(func[0])) // Array mit Render-Funktionen
+              if (func.length > 0 && Array.isArray(func[0])) // Array with render function
                   for (const renderExpr of func)
                       renderFuncs.push(_calculateRenderFunc(renderExpr));
                else
