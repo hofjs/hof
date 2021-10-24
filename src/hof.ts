@@ -208,7 +208,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
       if (expressionStart > 0)
           expression = expression.substring(expressionStart+1, expression.length-1);
 
-      return expression;
+      return expression.trim();
   }
 
   _parseHTML(htmlFunction: TemplateStringFunction, locals: PropertyMap): [NodeListOf<ChildNode>, PropertyMap, string[]] {
