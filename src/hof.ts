@@ -15,11 +15,12 @@ interface ObjectObservable {
     lastActionPropertyPath: string;
 
     _observableUniqueName: string;
-    _observers: Map<HofHtmlElement, string[]>;
+    _observers: Map<string, Map<HofHtmlElement, Map<string, string[]>>>;
+    _observersPropertyPaths: Map<HofHtmlElement, Map<string, string[]>>;
 }
 
 interface ArrayObservable<T> extends ObjectObservable { 
-    _emit: (index: number, items: T[], deletedItems: T[]) => Array<T>;
+    _emit: (index: number, items: T[], deletedItems: T[], action: Function) => Array<T>;
 
     edit: (index: number, element: T) => T[];
     delete: (index: number) => T[];
@@ -103,8 +104,17 @@ export abstract class HofHtmlElement extends HTMLElement  {
                   set: function(v) {
                       const oldValue = this.getProperty(prop, initialValue);
 
-                      if (this._callBindVariableBeforeChangedHook(this, prop, v, oldValue)) {
-                        this.setProperty(prop, v);                        
+                      if (this._callBindVariableBeforeChangedHook(this, prop, v, oldValue)
+                        && this._callBindVariableBeforePropertyChangedHook(this, prop, "", v, oldValue)) {
+                        
+                        // If not initial rendering (oldValue != undefined) and value set on
+                        // initial rendering is array, make partial update instead of full update
+                        if (Array.isArray(oldValue))
+                            this._renderUpdate(v);
+                        else
+                            this.setProperty(prop, v);
+
+                        this._callBindVariableAfterPropertyChangedHook(this, prop, "", v, oldValue);
                         this._callBindVariableAfterChangedHook(this, prop, v, oldValue);
                       }
                     },
@@ -119,6 +129,8 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
       // Render again in case of complex object or on value change of simple property or on collection action
       if (typeof(oldValue) == "object" || typeof(value) == "object" || oldValue != value || value["lastActionMethod"]) {
+        // Only update property if it was changed and not only subproperty
+        if (!value.lastActionPropertyPath) {
           // Process initial element-property setter calls (cache for time after template
           // has been constructed and further binding variables are available)
           this._properties[name] = value;
@@ -127,12 +139,13 @@ export abstract class HofHtmlElement extends HTMLElement  {
           if (this._allBindVariables)
               this._allBindVariables[name] = value;
 
-          this._updatePropertyObservers([name, value]);
+          // Make new objects observable
+          if (this._allBindVariables)
+              this._makeBindVariableObservable(name);
+        }
       }
       
-      // Make new objects observable
-      if (this._allBindVariables)
-          this._makeBindVariableObservable(name);
+      this._updatePropertyObservers([name, value]);
   }
 
   getProperty(name: string, initialValue: Object): Object {
@@ -234,10 +247,19 @@ export abstract class HofHtmlElement extends HTMLElement  {
           if (typeof propObj == "undefined") return;
 
           if (typeof propObj == 'object') {
+            if (!Array.isArray(propObj) && propertyPath.includes(".") && propObj[lastProp].bind) {
+                propObj[lastProp] = propObj[lastProp].bind(propObj);
+            }
+
+              // Do not observe function references
+              if (propObj[lastProp]["bind"]) continue;
+    
+              // Observe arrays and objects
               if(!Array.isArray(propObj))
                   this._makeObjectObservable(propObj, lastProp, bindVariableName, propertyPath);
-              else
-                  this._makeArrayObservable(propObj, bindVariableName, props[i-1] ?? "");
+              else {
+                  this._makeArrayObservable(propObj, lastProp, bindVariableName, propertyPath);
+              }
           }
 
           propObj = propObj[props[i]];
@@ -287,84 +309,58 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
       const self = this;
 
-      if (this._registerNewObserver(obj, observerProperty)) {
+      if (!this._registerNewObserver(obj, observerProperty, this, componentProperty, propertyPath)) {
         Object.defineProperty(obj, observerProperty, {
             get: function() { return _value; }.bind(this),
             set: function(v: Object) {
-                const _oldValue = _value;
+                const newValue = v;
+                const oldValue = obj[observerProperty];
 
-                if (self._callBindVariableBeforeChangedHook(obj, observerProperty, v, _oldValue)) {
-                    _value = v;
-
-                    obj._observers.forEach((properties, component) => properties.forEach(
-                        () => {
-                            let bindVariableValue = component.getProperty(componentProperty, undefined);
-                            if (bindVariableValue) {
-                                if (!component._callBindVariableBeforePropertyChangedHook(self, componentProperty, propertyPath, v, _oldValue)) {
-                                    return;
-                                } 
-
-                                bindVariableValue.lastActionMethod = "SET";
-                                bindVariableValue.lastActionPropertyPath = propertyPath;
-
-                                component.setProperty(componentProperty, bindVariableValue);
-
-                                component._callBindVariableAfterPropertyChangedHook(self, componentProperty, propertyPath, v, _oldValue)
-
-                                bindVariableValue.lastActionMethod = null;
-                                bindVariableValue.lastActionPropertyPath = null;
-                            }
-                        }));
-
-                    self._callBindVariableAfterChangedHook(obj, observerProperty, _value, _oldValue);
-                  }         
+                self._applyValueAndNotifyObservers(obj, observerProperty, componentProperty, newValue, oldValue, false, () => _value = v);
             }.bind(this),
             enumerable: true,
             configurable: true
         });
 
         // Adapt binding for methods in properties, so methods use this of surrounding object literal
-        if (propertyPath.includes(".") && obj[observerProperty].bind)
-            obj[observerProperty] = obj[observerProperty].bind(obj);
-      }
+        if (propertyPath.includes(".") && obj[observerProperty].bind) {
+            obj[observerProperty] = obj[observerProperty].bind(obj);}
+    }
   }
 
-  _makeArrayObservable(arr: Array<Object>, observerProperty: string, componentProperty: string) {
-    if (this._registerNewObserver(arr, observerProperty)) {
-          arr._emit = function(index: number, items: Object[], deletedItems: Object[]) {
-              // Use partial rendering only for change or delete operations with 1 element
-              if (items.length == 0) this.lastActionMethod = "DELETE";
-              else if (index == null) this.lastActionMethod = "ADD";
-              else if (items.length == 1) this.lastActionMethod = "EDIT";
-              this.lastActionIndex = index ?? this.length - 1;
+  _makeArrayObservable(arr: Array<Object>, observerProperty: string, componentProperty: string, propertyPath: string) {
+    const self = this;
+    if (!this._registerNewObserver(arr, observerProperty, this, componentProperty, propertyPath)) {
+          arr._emit = function(index: number, items: Object[], deletedItems: Object[], action: Function) {
+            // Use partial rendering only for change or delete operations with 1 element
+            if (items.length == 0) this.lastActionMethod = "DELETE";
+            else if (index == null) this.lastActionMethod = "ADD";
+            else if (items.length == 1) this.lastActionMethod = "EDIT";
 
-              // Return last added, updated or deleted element
-              this.lastActionObject = deletedItems.length > 0 ? deletedItems[deletedItems.length - 1] : items[this.lastActionIndex];
+            this.lastActionIndex = index ?? this.length;
 
-              // Notify observers
-              this._observers.forEach((properties, component) => properties.forEach(property => {
-                    // Array is contained within other property, so refresh outer property instead
-                    if (componentProperty != observerProperty)
-                        component.setProperty(property, component.getProperty(property, undefined))
-                    else // Array is property, so refresh array
-                        component.setProperty(property, this);  
-                }));
+            const newValue = items[items.length - 1];
+            const oldValue = deletedItems[deletedItems.length - 1];;
+            
+            // Return last added, updated or deleted element
+            this.lastActionObject = newValue ?? oldValue;
 
-              // Reset action
-              this.lastActionMethod = null;  this.lastActionIndex = null; this.lastActionObject = null;
+            self._applyValueAndNotifyObservers(this, observerProperty, componentProperty, newValue, oldValue, true, action);
 
-              return this;
+            // Reset action
+            this.lastActionMethod = null;  this.lastActionIndex = null; this.lastActionObject = null; this.lastActionPropertyPath = null;
+
+            return this;
           }
-          arr.push = function(...items: Object[]) {
-              Array.prototype.push.call(this, ...items);
-              arr._emit(null, items, []);
+          arr.push = function(...items: Object[]) {       
+              arr._emit(null, items, [], () =>  Array.prototype.push.call(this, ...items));
               
               return arr.length;
           };
           arr.splice = function(index: number, deleteCount: number, ...items: Object[]) {
-              const deletedItems = Array.prototype.splice.call(this, index, deleteCount, ...items);
+              const deletedItems = this.slice(index, index + deleteCount);
               if (deleteCount <= 1)
-                arr._emit(index, items, deletedItems);
+                arr._emit(index, items, deletedItems, () => Array.prototype.splice.call(this, index, deleteCount, ...items));
 
             return deletedItems;
           }
@@ -373,15 +369,62 @@ export abstract class HofHtmlElement extends HTMLElement  {
       }
   }
 
-  _registerNewObserver(obj: Object|Array<Object>, observerProperty: string) {
+  _applyValueAndNotifyObservers(obj: Object, observerProperty: string, componentProperty: string, newValue: Object, oldValue: object, arrayNotification: boolean, action: Function) {
+    const self = this;
+
+    if (!self._callBindVariableBeforeChangedHook(self, componentProperty, self[componentProperty], self[componentProperty])
+        || !self._callBindVariableBeforePropertyChangedHook(self, componentProperty, observerProperty, newValue, oldValue))
+        return;
+
+    action();
+
+    obj._observers.get(observerProperty).forEach((componentDetails, component) => {
+        componentDetails.forEach((componentPropertyPaths, componentProperty) => {
+            componentPropertyPaths.forEach(componentPropertyPath => {
+                // On arrays if length property is changed, array ist changed, so adapt
+                // property path to match expressions depending on array instead of array.length property
+                if (arrayNotification)
+                    componentPropertyPath = componentPropertyPath.replace(".length", "");
+
+                let bindVariableValue = component.getProperty(componentProperty, undefined);
+                if (bindVariableValue) {
+                    if (!arrayNotification) bindVariableValue.lastActionMethod = "SET";
+
+                    if (!component._callBindVariableBeforeChangedHook(component, componentProperty, component[componentProperty], component[componentProperty])
+                        || !component._callBindVariableBeforePropertyChangedHook(component, componentProperty, componentPropertyPath, newValue, oldValue)) {
+                        return;
+                    }
+
+                    bindVariableValue.lastActionPropertyPath = componentPropertyPath;                                    
+                    component.setProperty(componentProperty, bindVariableValue);
+
+                    component._callBindVariableAfterPropertyChangedHook(self, componentProperty, componentPropertyPath, newValue, oldValue)                          
+
+                    bindVariableValue.lastActionMethod = null;
+                    bindVariableValue.lastActionPropertyPath = null;
+                }
+            });
+        });                                    
+    });
+
+    self._callBindVariableAfterChangedHook(self, componentProperty, self[componentProperty], self[componentProperty]);
+  }
+
+  _registerNewObserver(obj: Object|Array<Object>, observerProperty: string, component: HofHtmlElement, componentProperty: string, componentPropertyPath: string) {
+    let propertyAlreadyObserved = true; 
     if (!obj._observers) obj._observers = new Map();
-    if (!obj._observers.has(this)) obj._observers.set(this, []);
-    if (!obj._observers.get(this).includes(observerProperty)) {
-      obj._observers.get(this).push(observerProperty);
-      return true;
+    if (!obj._observers.has(observerProperty)) {
+        obj._observers.set(observerProperty, new Map());
+        propertyAlreadyObserved = false;
     }
-    else
-        return false;
+    if (!obj._observers.get(observerProperty).has(component)) obj._observers.get(observerProperty).set(component, new Map());
+    if (!obj._observers.get(observerProperty).get(component).has(componentProperty)) obj._observers.get(observerProperty).get(component).set(componentProperty, []);
+
+    const objObserverList = obj._observers.get(observerProperty).get(component).get(componentProperty);
+    if (!objObserverList.includes(componentPropertyPath))
+       objObserverList.push(componentPropertyPath);
+
+    return propertyAlreadyObserved;
   }
 
   _calculateBindings(htmlFunction: string, bindVariableNames: string[]) {
@@ -441,38 +484,49 @@ export abstract class HofHtmlElement extends HTMLElement  {
         delete this._allBindExpressions[bindVariableToDelete];
   }
 
-  _renderUpdate(newBindVariableValue: Object) {
+  _renderUpdate(value: Object) {
       // Only partially update components that render list, since for other components
       // other element would be added/deleted
       if (this._listTemplate != null) {
-          this._locals[this._listIt] = this._listData[newBindVariableValue.lastActionIndex];
+          this._locals[this._listIt] = this._listData[value.lastActionIndex];
 
           // Remove node
-          if (newBindVariableValue.lastActionMethod == "DELETE") {
-            this._removeObserversForBindVariable(newBindVariableValue.lastActionObject._observableUniqueName);
-            this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex].remove();
+          if (value.lastActionMethod == "DELETE") {
+            this._removeObserversForBindVariable(value.lastActionObject._observableUniqueName);
+            this._root.childNodes[this._listStart+value.lastActionIndex].remove();
           }
           else {
             this._locals[this._listIt]._observableUniqueName = this._listIt + (this._renderIteration+1);
 
             // Parse new html for added or updated content
-            const [elements, bindVariables, bindVariableNames] = this._parseHTML(this._listTemplate, { [this._listIt]: this._listData[newBindVariableValue.lastActionIndex] });
+            const [elements, bindVariables, bindVariableNames] = this._parseHTML(this._listTemplate, { [this._listIt]: this._listData[value.lastActionIndex] });
 
             // Add or replace html
-            if (newBindVariableValue.lastActionMethod == "ADD") {
-                if (this._root.childNodes[newBindVariableValue.lastActionIndex])
-                    this._root.insertBefore(elements[0], this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex-1].nextSibling);
+            if (value.lastActionMethod == "ADD") {
+                if (this._root.childNodes[value.lastActionIndex])
+                    this._root.insertBefore(elements[0], this._root.childNodes[this._listStart+value.lastActionIndex-1].nextSibling);
                 else
                     this._root.appendChild(elements[0]);
 
-                this._processElementBinding(this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex], bindVariables, bindVariableNames);
+                this._processElementBinding(this._root.childNodes[this._listStart+value.lastActionIndex], bindVariables, bindVariableNames);
             }
-            else if (newBindVariableValue.lastActionMethod == "EDIT") {
-                this._root.replaceChild(elements[0], this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex])
-                this._processElementBinding(this._root.childNodes[this._listStart+newBindVariableValue.lastActionIndex], bindVariables, bindVariableNames);
+            else if (value.lastActionMethod == "EDIT") {
+
+                this._root.replaceChild(elements[0], this._root.childNodes[this._listStart+value.lastActionIndex])
+                this._processElementBinding(this._root.childNodes[this._listStart+value.lastActionIndex], bindVariables, bindVariableNames);
             }
         }
       }
+  }
+
+  _logUpdate(element: DOMElement, name: string, value: Object) {
+      // Filter out function references on first rendering because they are not observed
+      if (value["bind"]) return;
+
+      // If property path is specified, component is not updated, but child component that references property path
+      if (value.lastActionPropertyPath) return;
+     
+      console.log(`[${element.nodeName ?? "TEXT"}]: Update of ${name}: ${value.lastActionMethod ?? "SET"} ${JSON.stringify(value.lastActionObject ?? value)}`);
   }
 
   _makeDerivedVariablesObservable(variableName: string, variableBody: string, html: string) {
@@ -560,14 +614,22 @@ export abstract class HofHtmlElement extends HTMLElement  {
       if (!this._observerExpressions.has(element)) this._observerExpressions.set(element, new Map());
       this._observerExpressions.get(element).set(attr, attributeExpression);
 
-      // Register combination of element and attribute as observer for each bind variable name
-      this._registerElementAttributeAsObserverForBindVariables(element, attr, bindVariables, attributeExpression.bindVariableNames);
+      // Rebind this of subproperties to parent property
+      for (let bindVariableName of attributeExpression.bindVariableNames) {
+        if (bindVariables[bindVariableName].bind)
+            bindVariables[bindVariableName] = bindVariables[bindVariableName].bind(this); // pass this from parent to child on callbacks that are passed down
+      }
 
       // Determine current values
       const bindVariableValues = this._getBindVariableValues(attributeExpression.bindVariableNames);
 
       // Get current value of element attribute by evaluating expression
-      element[attr] = attributeExpression.execute(...bindVariableValues);
+      const value = attributeExpression.execute(...bindVariableValues);
+      element[attr] = value;
+      
+      // Register combination of element and attribute as observer for each bind variable name
+      if (!value["bind"]) // Do not observe functions
+        this._registerElementAttributeAsObserverForBindVariables(element, attr, bindVariables, attributeExpression.bindVariableNames);
   }
 
   _buildCallableExpression(attr: string, expr: string, bindVariableNames: string[]) {
@@ -624,27 +686,26 @@ export abstract class HofHtmlElement extends HTMLElement  {
           for (const [element, attrs] of this._observersForBindVariable.get(bindVariableName).entries()) {
               for (const attrName of attrs) {
                   const attrExpr = this._observerExpressions.get(element).get(attrName);
-                  
-                  // Reevaluate binding expression
-                  const bindVariableValues = this._getBindVariableValues(attrExpr.bindVariableNames);
-                  const newValue = attrExpr.execute(...bindVariableValues);
 
-                  // Always propagate changes in properties to all observer elements and
-                  // propagate changes in subproperties only if subproperty is included in binding expression / template
-                  // (e.g. if data.selectedPerson.name is changed, only attributes with bindings to data, data.selectedPerson
-                  // and data.selectedPerson.name, but e.g. not on data.selectedPerson.age).
-                  if (!bindVariableValue.lastActionPropertyPath || attrExpr.template && attrExpr.template.includes(bindVariableValue.lastActionPropertyPath)) {
-                      // Trigger partial updates for collections
-                      if (newValue.lastActionMethod) {
-                          if (element instanceof HofHtmlElement)
-                            element._renderUpdate(newValue);
-                          // console.log(`[${element.nodeName ?? "TEXT"}] Partial update of ${attrName}: ${newValue.lastActionMethod} ${JSON.stringify(newValue[newValue.lastActionIndex])}`);
-                      }
-                      else {
-                          element[attrName] = newValue;
-                          // console.log(`[${element.nodeName ?? "TEXT"}]: Full update of ${attrName}: ${JSON.stringify(newValue)}`);
-                      }
-                  }
+                  if (!bindVariableValue.lastActionPropertyPath || attrExpr.template.includes(bindVariableValue.lastActionPropertyPath)) {
+                    // Reevaluate binding expression
+                    const bindVariableValues = this._getBindVariableValues(attrExpr.bindVariableNames);
+                    const newValue = attrExpr.execute(...bindVariableValues);
+
+                    // Always propagate changes in properties to all observer elements and
+                    // propagate changes in subproperties only if subproperty is included in binding expression / template
+                    // (e.g. if data.selectedPerson.name is changed, only attributes with bindings to data, data.selectedPerson
+                    // and data.selectedPerson.name, but e.g. not on data.selectedPerson.age).
+                    if (typeof newValue.lastActionIndex != "undefined" || !bindVariableValue.lastActionPropertyPath || attrExpr.template && attrExpr.template.includes(bindVariableValue.lastActionPropertyPath)) {
+                        // Always update HofHTMLElement to pass down subproperty changes to sub components,
+                        // but update simple html elements only if value changed
+                        if (element instanceof HofHtmlElement || element[attrName] != newValue) {
+                            // this._logUpdate(element, attrName, newValue);
+
+                            element[attrName] = newValue;
+                        }
+                    }
+                }
               }
           }
       }
