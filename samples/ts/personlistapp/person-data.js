@@ -9,7 +9,7 @@ export const PersonData = component("person-data", {
     changeName(value) { this.selected.name = value; },
     changeAge(event) { this.selected.age = event.target.value; },
     create() { this.selected = new Person(); },
-    edit(person) { this.selected = person; },
+    edit(person) { this.selected = Object.assign({}, person); },
     remove(person) { this.persons.splice(this.findIndex(person), 1); this.create(); },
     save() {
         if (this.selected.id) // Existing person?
@@ -22,12 +22,12 @@ export const PersonData = component("person-data", {
     render() {
         return () => `
             <fieldset>
-                <person-data-input label="Name" value="${this.selected.name}" onchange="${(event) => this.changeName(event.target.value)}"></person-data-input>
-                <person-data-input label="Age" value="${this.selected.age}" onchange="${(event) => this.changeAge(event)}"></person-data-input>
+                <person-data-input label="Name" value="${this.selected.name}" change="${(event) => this.changeName(event.target.value)}"></person-data-input>
+                <person-data-input label="Age" value="${this.selected.age}" change="${(event) => this.changeAge(event)}"></person-data-input>
                 <button onclick="${this.save}">Speichern</button>
             </fieldset>                    
             
-            ${this.persons.length} Personen in der Liste
+            ${this.persons.length} Persons
             <person-data-list persons="${this.persons}" edititem="${this.edit}" deleteitem="${this.remove}"></person-data-list>
             
             <a href="#" onclick="${this.create}">Neu</a>

@@ -1,8 +1,7 @@
 export declare class Person {
-    id: any;
-    name: any;
-    age: any;
-    address: any;
+    id: number | "";
+    name: string;
+    age: string;
     static counter: number;
     constructor(name?: any, age?: any);
 }

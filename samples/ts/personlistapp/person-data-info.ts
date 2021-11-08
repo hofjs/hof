@@ -1,7 +1,8 @@
 import { component } from "../../../lib/esm/hof.js";
+import { Person } from "./Person.js";
 
 export const PersonDataInfo = component("person-data-info", {
-    value: [],
+    value: [] as Array<Person>,
 
     render() {
         return () => `

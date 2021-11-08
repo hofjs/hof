@@ -10,7 +10,7 @@
       "noUnusedParameters": true,
       "esModuleInterop": true,
       "noImplicitReturns": true,
-      "noImplicitThis": false, // required to use this within object literals, for example in object specified in component()
+      "noImplicitThis": true, // required to use this within object literals, for example in object specified in component()
       "noImplicitAny": false,
       "strictNullChecks": false,
       "suppressImplicitAnyIndexErrors": true,

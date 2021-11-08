@@ -6,7 +6,6 @@ export class Person {
             this.id = ""; // Temporäres Objekt bekommt keine ID
         this.name = name || "";
         this.age = age || "";
-        this.address = { street: "Test" };
     }
 }
 Person.counter = 1;

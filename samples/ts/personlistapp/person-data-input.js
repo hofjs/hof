@@ -2,8 +2,8 @@ import { component } from "../../../lib/esm/hof.js";
 export const PersonDataInput = component("person-data-input", {
     value: "",
     label: "",
-    onchange: null,
+    change: Function,
     render() {
-        return () => `${this.label}: <input value="${this.value}" onchange="${this.onchange}" />`;
+        return () => `${this.label}: <input value="${this.value}" onchange="${this.change}" />`;
     }
 }, "label");

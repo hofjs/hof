@@ -1,8 +1,7 @@
 export class Person {
-    id;
-    name;
-    age;
-    address;
+    id: number|"";
+    name: string;
+    age: string;
 
     static counter = 1;
 
@@ -14,7 +13,5 @@ export class Person {
 
         this.name = name || "";
         this.age = age || "";
-
-        this.address = { street: "Test" };
     }
 }
