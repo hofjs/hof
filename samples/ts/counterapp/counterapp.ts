@@ -39,16 +39,16 @@ component("counter-component", {
     // },
               
     render() {
-        const tripled = function() { return this.counterStore.value * 3; };
+        const tripled = function(this: any) { return this.counterStore.value * 3; };
         
-        function quadrupeled() {
+        function quadrupeled(this: any) {
             return this.counterStore.value * 4;
         }
 
         return () => `
             <div>${new Date()}</div>
             <div>Count: ${this.counterStore.value} <button onclick="${() => this.counterStore.value++}">++</button></div>
-            <div>Double count: ${this.counterStore.doubled+1}</div>
+            <div>Double count: ${(this.counterStore.doubled as any)+1}</div>
             <div>Triple count: ${-tripled}</div>
             <div>Quadrupled count: ${quadrupeled()}</div>
         `;
