@@ -712,8 +712,36 @@ export abstract class HofHtmlElement extends HTMLElement  {
   }
 }
 
+type BeforeChangedHookName<PropertyName extends string> = `${PropertyName}BeforeChanged`;
+type BeforeChangedHookType<PropertyType> = (newValue: PropertyType, oldValue: PropertyType) => boolean;
+type AfterChangedHookName<PropertyName extends string> = `${PropertyName}AfterChanged`;
+type AfterChangedHookType<PropertyType> = (newValue: PropertyType, oldValue: PropertyType) => void;
+type BeforePropertyChangedHookName<PropertyName extends string> = `${PropertyName}BeforePropertyChanged`;
+type BeforePropertyChangedHookType<PropertyType> = (subProp: string, newValue: PropertyType, oldValue: PropertyType) => boolean;
+type AfterPropertyChangedHookName<PropertyName extends string> = `${PropertyName}AfterPropertyChanged`;
+type AfterPropertyChangedHookType<PropertyType> = (subProp: string, newValue: PropertyType, oldValue: PropertyType) => void;
+
+type HofHtmlElementComponentLiteralWithHooks<HofHtmlElementComponentLiteral> = {
+    [Propertyname in keyof HofHtmlElementComponentLiteral]: Object;
+} & {
+    [PropertyName in BeforeChangedHookName<string & keyof HofHtmlElementComponentLiteral>]?:
+        BeforeChangedHookType<HofHtmlElementComponentLiteral[string & keyof HofHtmlElementComponentLiteral]>;
+} & {
+    [PropertyName in AfterChangedHookName<string & keyof HofHtmlElementComponentLiteral>]?:
+        AfterChangedHookType<HofHtmlElementComponentLiteral[string & keyof HofHtmlElementComponentLiteral]>;
+} & {
+    [PropertyName in BeforePropertyChangedHookName<string & keyof HofHtmlElementComponentLiteral>]?:
+        BeforePropertyChangedHookType<HofHtmlElementComponentLiteral[string & keyof HofHtmlElementComponentLiteral]>;
+} & {
+    [PropertyName in AfterPropertyChangedHookName<string & keyof HofHtmlElementComponentLiteral>]?:
+        AfterPropertyChangedHookType<HofHtmlElementComponentLiteral[string & keyof HofHtmlElementComponentLiteral]>;
+} & {
+    construct?: Function;
+    render: Function;
+}
+
 // Helper function to support functional component definition as alternative to class based web component implementation
-export function component(name: string, obj: object, tag = "div"): new () => HofHtmlElement {
+export function component<T extends HofHtmlElementComponentLiteralWithHooks<T>>(name: string, obj: T, tag = "div"): new () => HofHtmlElement {
   let componentConstructor = class extends HofHtmlElement {
       constructor() { super(tag); super.useAutoProps(); }
       render() {}
