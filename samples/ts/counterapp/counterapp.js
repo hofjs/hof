@@ -15,21 +15,22 @@ const counterStore = {
     },
     increment() { this.value++; },
     decrement() { this.value--; },
-    test() { return this.value; },
     // Live update
     doubled: function () { return this.value * 2; },
     // doubled() {
     //     return this.value * 2;
     // },
 };
-component("counter-component", {
+const CounterComponent = component("counter-component", {
     counterStore,
     // counterStoreBeforePropertyChanged(propName, newValue, oldValue) {
     //     console.log(propName + ": " + newValue);
     //      return false;
     // },
     render() {
-        const tripled = function () { return this.counterStore.value * 3; };
+        const tripled = function () {
+            return this.counterStore.value * 3;
+        };
         function quadrupeled() {
             return this.counterStore.value * 4;
         }
