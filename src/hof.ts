@@ -740,8 +740,10 @@ type HofHtmlElementComponentLiteralWithHooks<HofHtmlElementComponentLiteral> = {
     render: Function;
 }
 
+export type ObjectFunction = any;
+
 // Helper function to support functional component definition as alternative to class based web component implementation
-export function component<T extends HofHtmlElementComponentLiteralWithHooks<T>>(name: string, obj: T, tag = "div"): new () => HofHtmlElement {
+export function component<T extends HofHtmlElementComponentLiteralWithHooks<T>>(name: string, obj: T, tag = "div"): new () => HofHtmlElement & T {
   let componentConstructor = class extends HofHtmlElement {
       constructor() { super(tag); super.useAutoProps(); }
       render() {}
@@ -818,5 +820,5 @@ export function component<T extends HofHtmlElementComponentLiteralWithHooks<T>>(
 
   customElements.define(name, componentConstructor);
 
-  return componentConstructor;
+  return componentConstructor as new() => HofHtmlElement & T;
 }
