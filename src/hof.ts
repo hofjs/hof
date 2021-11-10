@@ -1,5 +1,20 @@
 // https://github.com/prateek3255/typescript-react-demo-library
 
+// Adapt bind to preserve function body instead of returning [native code]  if function is bound which is
+// important because _makeDerivedVariablesObservable requires function body to setup observability
+(function () {
+    const originalBind = Function.prototype.bind;
+
+    // Only adapt if extension has not already been applied
+    if (originalBind.toString().includes("[native code]"))
+        Function.prototype.bind = function () {
+        const result = originalBind.apply(this, arguments);
+        result.toString = () => this.toString();
+
+        return result;
+        }
+}());
+
 interface PropertyMap {
     [propertyName: string]: Object & Partial<{ bind(thisArg: Object, ...args: Object[]): Object }>
 }
@@ -572,7 +587,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
           if (token == '(') continue;
 
           // Resolve property variable (defined in componented or referenced from store)
-          const index = expr.indexOf(".") + 1;
+          const index = expr.indexOf(".") + 1; console.log(new Function("return " + expr).call(props)?.original?.toString());
           const functionBody = new Function("return " + expr).call(props).toString().replaceAll("this.", expr.substring(index, expr.indexOf(".", index)+1));
 
           html = this._makeDerivedVariablesObservable(expr, functionBody, html);   
@@ -628,7 +643,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
       element[attr] = value;
       
       // Register combination of element and attribute as observer for each bind variable name
-      if (!value["bind"]) // Do not observe functions
+      if (value != null && !value["bind"]) // Do not observe functions
         this._registerElementAttributeAsObserverForBindVariables(element, attr, bindVariables, attributeExpression.bindVariableNames);
   }
 
