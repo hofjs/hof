@@ -1,6 +1,6 @@
 // https://github.com/prateek3255/typescript-react-demo-library
 
-// Adapt bind to preserve function body instead of returning [native code]  if function is bound which is
+// Adapt bind to preserve function body instead of returning [native code] if function is bound which is
 // important because _makeDerivedVariablesObservable requires function body to setup observability
 (function () {
     const originalBind = Function.prototype.bind;
@@ -587,7 +587,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
           if (token == '(') continue;
 
           // Resolve property variable (defined in componented or referenced from store)
-          const index = expr.indexOf(".") + 1; console.log(new Function("return " + expr).call(props)?.original?.toString());
+          const index = expr.indexOf(".") + 1;
           const functionBody = new Function("return " + expr).call(props).toString().replaceAll("this.", expr.substring(index, expr.indexOf(".", index)+1));
 
           html = this._makeDerivedVariablesObservable(expr, functionBody, html);   
