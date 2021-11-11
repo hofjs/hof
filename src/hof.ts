@@ -80,7 +80,8 @@ export abstract class HofHtmlElement extends HTMLElement  {
   PROPS_FILTER = (p: string) => p.charAt(0) != '_' && p != p.toUpperCase() && p != 'constructor' && p != 'render';
   
   REFERENCED_BIND_VARIABLE_NAMES_REGEX = new RegExp('([a-zA-Z_$][\\w]+\\.[\\w\\.]+)', 'g');
-  DERIVED_PROPERTY_SIGNATURE_REGEX = new RegExp("^function *\\(\\)");
+  DERIVED_PROPERTY_FUNCTION_SIGNATURE_REGEX = new RegExp("^function *\\(\\)");
+  DERIVED_PROPERTY_LAMBDAEXPR_SIGNATURE_REGEX = new RegExp("^\\(\\)[^=]*=>");
 
   constructor(tagName: string = 'div') {
       super();
@@ -548,7 +549,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
     // Nur global in der Form prop: function() bzw. lokal in der Form prop = function()
     // definierte abgeleitete Properties observable machen (keine regulären Methoden / Funktionen
     // in der Form function name() bzw. name())
-    if (!this.DERIVED_PROPERTY_SIGNATURE_REGEX.test(variableBody))
+    if (!this.DERIVED_PROPERTY_FUNCTION_SIGNATURE_REGEX.test(variableBody) && !this.DERIVED_PROPERTY_LAMBDAEXPR_SIGNATURE_REGEX.test(variableBody))
          return html;
 
      // Make derived bind variables observable
@@ -573,9 +574,9 @@ export abstract class HofHtmlElement extends HTMLElement  {
               props[uniqueBindVariableName] = v;
               bindVariables.push(uniqueBindVariableName);
 
-              const regexp = new RegExp(`(${n.replaceAll("$", "\\$")})([^=-])`, 'g');
-              for (const [expr, , token] of html.matchAll(regexp))
-                  html = html.replace(expr, `${uniqueBindVariableName}${token}`);
+              const regexp = new RegExp(`[{][^{}]*(${n.replaceAll("$", "\\$")})([^=-])`, 'g');
+              for (const [, expr, token] of html.matchAll(regexp)) { console.log({uniqueBindVariableName, expr, token, v: v.toString()})
+                  html = html.replace(`${expr}${token}`, `${uniqueBindVariableName}${token}`);}
 
               html = this._makeDerivedVariablesObservable(uniqueBindVariableName, v.toString(), html);
           }
@@ -664,6 +665,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
       // Currently, in addition to the local variables (additional variables passed to renderContent/renderList),
       // the WebComponent's properties are also passed as local variables to the WebComponent's attribute function,
       // which is not really necessary, but facilitates the generic handling
+      console.dir({this: this, expr})
       return new AttributeExpression(new Function(...referencedBindVariables, "return " +  expr).bind(this), referencedBindVariables, expr);
   }
 
