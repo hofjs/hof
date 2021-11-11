@@ -113,8 +113,8 @@ component("counter-component", {
     render() {
         // Derived variable: If count changes, tripled automatically
         // changes too and depending parts are updated
-        //const tripled = function() { return this.counterStore.count * 3; };
-        const tripled = () => this.counterStore.count * 3;
+        //const tripled = function() { return this.count * 3; };
+        const tripled = () => this.count * 3;
         
         // Regular variable: This ist not tracked
         const PI = 3.14;
