@@ -675,7 +675,6 @@ export abstract class HofHtmlElement extends HTMLElement  {
       // Currently, in addition to the local variables (additional variables passed to renderContent/renderList),
       // the WebComponent's properties are also passed as local variables to the WebComponent's attribute function,
       // which is not really necessary, but facilitates the generic handling
-      console.dir({this: this, expr})
       return new AttributeExpression(new Function(...referencedBindVariables, "return " +  expr).bind(this), referencedBindVariables, expr);
   }
 
