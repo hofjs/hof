@@ -15,6 +15,16 @@
         }
 }());
 
+(function() {
+    if (!String.prototype.replaceAll) {
+        String.prototype.replaceAll = function(find: any, replace: any): string {
+        let s = this;
+        while (s !== (s = s.replace(find, replace)));
+        return s as string;
+        };
+    }
+}());
+
 interface PropertyMap {
     [propertyName: string]: Object & Partial<{ bind(thisArg: Object, ...args: Object[]): Object }>
 }
@@ -575,7 +585,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
               bindVariables.push(uniqueBindVariableName);
 
               const regexp = new RegExp(`[{][^{}]*(${n.replaceAll("$", "\\$")})([^=-])`, 'g');
-              for (const [, expr, token] of html.matchAll(regexp)) { console.log({uniqueBindVariableName, expr, token, v: v.toString()})
+              for (const [, expr, token] of html.matchAll(regexp)) {
                   html = html.replace(`${expr}${token}`, `${uniqueBindVariableName}${token}`);}
 
               html = this._makeDerivedVariablesObservable(uniqueBindVariableName, v.toString(), html);
