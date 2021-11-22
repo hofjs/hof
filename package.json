@@ -13,6 +13,7 @@
   "module": "./lib/esm/hof.js",
   "types": "./lib/esm/hof.d.ts",
   "browser": "./lib/nomodule/hof.js",
+  "type": "module",
   "scripts": {
     "clean": "rd /s /q lib 2>nul && rd /s /q samples\\ts\\lib 2>nul || exit 0",
     "build": "yarn build:esm && yarn build:cjs && yarn build:nomodule && yarn build:samples",
@@ -21,11 +22,13 @@
     "build:nomodule": "yarn esbuild src/esbuild-wrapper/hof.esbuild.ts --bundle --minify --sourcemap=external --outfile=lib/nomodule/hof.js",
     "build:samples": "tsc --project samples/ts/counterapp/tsconfig.json && tsc --project samples/ts/personlistapp/tsconfig.json",
     "build:debug": "yarn esbuild src/esbuild-wrapper/hof.esbuild.ts --bundle --sourcemap=external --outfile=lib/nomodule/hof.js",
-    "prepublishOnly": "yarn build"
+    "prepublishOnly": "yarn build",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "devDependencies": {
-    "esbuild": "^0.12.9",
-    "typescript": "^4.0.2"
+    "esbuild": "^0.12.29",
+    "jest": "^27.3.1",
+    "typescript": "^4.4.4"
   },
   "files": [
     "/lib"
