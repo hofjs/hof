@@ -12,15 +12,20 @@
         result.toString = () => this.toString();
 
         return result;
-        }
+    }
 }());
 
+// Shim replaceAll if not supported on browser by using a simplified implementation
+// that provides all required functionality for this framework
 (function() {
     if (!String.prototype.replaceAll) {
         String.prototype.replaceAll = function(find: any, replace: any): string {
-        let s = this;
-        while (s !== (s = s.replace(find, replace)));
-        return s as string;
+            let s = '', index, next;
+            while (~(next = this.indexOf(find, index))) {
+              s += this.substring(index, next) + replace;
+              index = next + find.length;
+            }
+            return s + this.substring(index);
         };
     }
 }());
@@ -90,8 +95,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
   PROPS_FILTER = (p: string) => p.charAt(0) != '_' && p != p.toUpperCase() && p != 'constructor' && p != 'render';
   
   REFERENCED_BIND_VARIABLE_NAMES_REGEX = new RegExp('([a-zA-Z_$][\\w]+\\.[\\w\\.]+)', 'g');
-  DERIVED_PROPERTY_FUNCTION_SIGNATURE_REGEX = new RegExp("^function *\\(\\)");
-  DERIVED_PROPERTY_LAMBDAEXPR_SIGNATURE_REGEX = new RegExp("^\\(\\)[^=]*=>");
+  DERIVED_PROPERTY_FUNCTION_SIGNATURE_REGEX = new RegExp("^function[ \n]*\\(\\)");
 
   constructor(tagName: string = 'div') {
       super();
@@ -102,6 +106,12 @@ export abstract class HofHtmlElement extends HTMLElement  {
   connectedCallback() {
       this._root = document.createElement(this._tagName);
       this._shadow.appendChild(this._root);
+
+      if (this["styles"]) {
+        const styles = document.createElement("style");
+        styles.innerHTML = this["styles"];
+        this._shadow.appendChild(styles);
+      }
 
       this.render();
   }
@@ -121,9 +131,10 @@ export abstract class HofHtmlElement extends HTMLElement  {
               delete obj[prop];
           }
 
-          if (prop == "construct" && typeof(initialValue) == "function") {
+          if (prop == "construct" && typeof(initialValue) == "function")
               initialValue.call(this);
-          }
+          else if (prop == "styles" && typeof(initialValue) == "function")
+              this["styles"] = initialValue();
           else // Default Property handling
               Object.defineProperty(this, prop, {
                   get: function() { return this.getProperty(prop, initialValue); },
@@ -191,7 +202,10 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
   renderList(data: Object[]|string, html: TemplateStringFunction, locals: PropertyMap = undefined) {
       const expression = html.toString();
-      const listIt = expression.substring(expression.indexOf('(')+1, expression.indexOf(')'));
+
+      // List parameter has to be identified by =>, because Node returns parameteter without brackets in function.toString()
+      // which is important because tests are executed on node
+      const listIt = expression.substring(0, expression.indexOf("=>")).replace("(", "").replace(")", "").trim();
 
       // List not yet resolved at time of call (first rendering), i.e. still value like ${data}
       if (typeof data == "string") return;
@@ -206,7 +220,8 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
       for (const listItem of this._listData) {
           locals[this._listIt] = listItem;
-          locals[this._listIt]._observableUniqueName = this._listIt + (this._renderIteration+1);
+          locals[this._listIt]._observableUniqueName = this._listIt + "__it" + (this._renderIteration+1);
+
           this._renderFull(html, locals);
       }
   }
@@ -522,10 +537,10 @@ export abstract class HofHtmlElement extends HTMLElement  {
             this._root.childNodes[this._listStart+value.lastActionIndex].remove();
           }
           else {
-            this._locals[this._listIt]._observableUniqueName = this._listIt + (this._renderIteration+1);
+            this._locals[this._listIt]._observableUniqueName = this._listIt + "__it" + (this._renderIteration+1);
 
             // Parse new html for added or updated content
-            const [elements, bindVariables, bindVariableNames] = this._parseHTML(this._listTemplate, { [this._listIt]: this._listData[value.lastActionIndex] });
+            const [elements, bindVariables, bindVariableNames] = this._parseHTML(this._listTemplate, this._locals);
 
             // Add or replace html
             if (value.lastActionMethod == "ADD") {
@@ -556,18 +571,21 @@ export abstract class HofHtmlElement extends HTMLElement  {
   }
 
   _makeDerivedVariablesObservable(variableName: string, variableBody: string, html: string) {
-    // Nur global in der Form prop: function() bzw. lokal in der Form prop = function()
-    // definierte abgeleitete Properties observable machen (keine regulären Methoden / Funktionen
-    // in der Form function name() bzw. name())
-    if (!this.DERIVED_PROPERTY_FUNCTION_SIGNATURE_REGEX.test(variableBody) && !this.DERIVED_PROPERTY_LAMBDAEXPR_SIGNATURE_REGEX.test(variableBody))
+    // Make only globally in the form prop: function() or locally in the form prop = function() defined derived properties
+    // observable (local lambda expressions are also supported because they get transformed into prop = function())
+    if (!this.DERIVED_PROPERTY_FUNCTION_SIGNATURE_REGEX.test(variableBody))
          return html;
 
      // Make derived bind variables observable
-     let referencedBindVariableNames = "||null";
-     for (const [referencedBindVariableName] of variableBody.matchAll(this.REFERENCED_BIND_VARIABLE_NAMES_REGEX))
-         referencedBindVariableNames += "||" + referencedBindVariableName;
+    let referencedBindVariableNames = "||null";
+    for (const [referencedBindVariableName] of variableBody.matchAll(this.REFERENCED_BIND_VARIABLE_NAMES_REGEX))
+        referencedBindVariableNames += "||" + referencedBindVariableName;
 
-      return html.replaceAll(`${variableName}`, `(${variableName}()${referencedBindVariableNames})`);
+    return html.replace(new RegExp(`([^\\w])${variableName}\\(\\)([^\\w])`, "g"), `$1(${variableName}()${referencedBindVariableNames})$2`);
+  }
+
+  _calculateUniqueElementAndVariableName(name: string, renderIteration: number) {
+      return name + "__it" + renderIteration;
   }
 
   _calculateTemplateAndBindVariableNames(html: string, props: PropertyMap, locals: PropertyMap): [string, string[]] {
@@ -578,30 +596,30 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
       // Add additional local variables to binding
       if (locals) {
-          for (let [n,v] of Object.entries(locals)) {
-              const uniqueBindVariableName = n + this._renderIteration;
+          for (let [variableName, variableValue] of Object.entries(locals)) {
+              const uniqueBindVariableName = variableName + "__it" + this._renderIteration;
 
-              props[uniqueBindVariableName] = v;
+              props[uniqueBindVariableName] = variableValue;
               bindVariables.push(uniqueBindVariableName);
 
-              const regexp = new RegExp(`[{][^{}]*(${n.replaceAll("$", "\\$")})([^=-])`, 'g');
-              for (const [, expr, token] of html.matchAll(regexp)) {
-                  html = html.replace(`${expr}${token}`, `${uniqueBindVariableName}${token}`);}
-
-              html = this._makeDerivedVariablesObservable(uniqueBindVariableName, v.toString(), html);
+              // Replace variable name with unique name to support list parameters
+              html = html.replace(new RegExp(`([{][^{}]*[^\\w]?)${variableName}([^\\w])`, "g"), `$1${uniqueBindVariableName}$2`);
+              
+              html = this._makeDerivedVariablesObservable(uniqueBindVariableName, variableValue.toString(), html);
           }
       }
 
       // Make derived global bind variables observable
       const regexp = new RegExp('(this[\\w$.]*\\.[\\w$]+)([(]?)', 'g');
-      for (const [, expr, token] of html.matchAll(regexp)) {
-          if (token == '(') continue;
-
-          // Resolve property variable (defined in componented or referenced from store)
+      for (const [, expr] of html.matchAll(regexp)) {
+          // Resolve property variable (defined in component or referenced from store)
           const index = expr.indexOf(".") + 1;
-          const functionBody = new Function("return " + expr).call(props).toString().replaceAll("this.", expr.substring(index, expr.indexOf(".", index)+1));
+          const func = new Function("return " + expr).call(props);
+          if (!func) continue;
 
-          html = this._makeDerivedVariablesObservable(expr, functionBody, html);   
+          const functionBody = func.toString().replaceAll("this.", expr.substring(index, expr.indexOf(".", index)+1));
+
+          html = this._makeDerivedVariablesObservable(expr, functionBody, html);
       }
 
       return [html, bindVariables];
@@ -634,7 +652,7 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
   _processBindingExpression(element: DOMElement, bindVariables: PropertyMap, bindVariableNames: string[], attr: string, expr: string) {
       // Build callable expression to (re)calculate value of attribute based on depending binding variables  
-      const attributeExpression = this._buildCallableExpression(attr, expr, bindVariableNames);
+      const attributeExpression = this._buildCallableExpression(attr, expr, bindVariableNames);      
 
       // Save attribute expression for later execution on bind variable changes
       if (!this._observerExpressions.has(element)) this._observerExpressions.set(element, new Map());
@@ -651,11 +669,12 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
       // Get current value of element attribute by evaluating expression
       const value = attributeExpression.execute(...bindVariableValues);
+
       element[attr] = value;
       
       // Register combination of element and attribute as observer for each bind variable name
       if (value != null && !value["bind"]) // Do not observe functions
-        this._registerElementAttributeAsObserverForBindVariables(element, attr, bindVariables, attributeExpression.bindVariableNames);
+        this._registerElementAttributeAsObserverForBindVariables(element, attr, bindVariables, attributeExpression.bindVariableNames); 
   }
 
   _buildCallableExpression(attr: string, expr: string, bindVariableNames: string[]) {
@@ -674,8 +693,9 @@ export abstract class HofHtmlElement extends HTMLElement  {
 
       // Currently, in addition to the local variables (additional variables passed to renderContent/renderList),
       // the WebComponent's properties are also passed as local variables to the WebComponent's attribute function,
-      // which is not really necessary, but facilitates the generic handling
-      return new AttributeExpression(new Function(...referencedBindVariables, "return " +  expr).bind(this), referencedBindVariables, expr);
+      // which is not really necessary, but facilitates the generic handling (errors as a consequence of expressions
+      // that are not resolved yet, are catched to support functions on properties such as persons.map)
+      return new AttributeExpression(new Function(...referencedBindVariables, "try {return " +  expr + "} catch(e) { return ''; }").bind(this), referencedBindVariables, expr);
   }
 
   _registerElementAttributeAsObserverForBindVariables(element: DOMElement, attr: string, bindVariables: PropertyMap, referencedBindVariableNames: string[]) {
@@ -766,8 +786,6 @@ type HofHtmlElementComponentLiteralWithHooks<HofHtmlElementComponentLiteral> = {
     render: Function;
 }
 
-export type ObjectFunction = any;
-
 // Helper function to support functional component definition as alternative to class based web component implementation
 export function component<T extends HofHtmlElementComponentLiteralWithHooks<T>>(name: string, obj: T, tag = "div"): new () => HofHtmlElement & T {
   let componentConstructor = class extends HofHtmlElement {
@@ -819,22 +837,22 @@ export function component<T extends HofHtmlElementComponentLiteralWithHooks<T>>(
 
       function _calculateLocalVariables(prop: string) {
           let functionDefinition = obj[prop].toString();
+          
+          // Filter out comments (this has to be done before looking for return statement to avoid return within comment to be returned)
+          functionDefinition = functionDefinition.replace(/\/\*[\s\S]*?\*\/|([^:]|^)\/\/.*$/gm, ' ');
+
           let begin = functionDefinition.indexOf("{") + 1;
           let end = functionDefinition.lastIndexOf("return")
           let functionBody = functionDefinition.substring(begin, end);
 
-          // Filter out comments
-          functionBody = functionBody.replace(/\/\*[\s\S]*?\*\/|([^:]|^)\/\/.*$/gm, ' ');
+          // Replace lambda expressions with scoped functions to
+          // enable rebind of this (because this must reference component
+          // instead of component literal to make observability work)
+          functionBody = functionBody.replace(/[ \n]+=[ \n]+\(([^\)]*)\)[ \n]*=>[ \n]*({[ \n]*return)?([^;]+;[ \n]*)}?/gm, "= function($1) { return $3 }; ");
 
           // Calculate variable names
-          const regexps = [
-            new RegExp(`let[^\\w$]+([\\w$]+)[\\W]*=`, 'g'),
-            new RegExp(`const[^\\w$]+([\\w$]+)[\\W]*=`, 'g'),
-            new RegExp(`function[^\\w$]+([\\w$]+)\\(`, 'g')
-          ];
           const variables = [];
-          for (const regexp of regexps)
-            for (const [,variable] of functionBody.matchAll(regexp))
+            for (const [,,variable] of functionBody.matchAll(/(const|let|function)[ \n]+([^ \n(=]+)/gm))
                 variables.push(variable);
 
           // Calculate variable values
