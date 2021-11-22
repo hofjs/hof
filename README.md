@@ -12,7 +12,7 @@ This framework has the following advantages, among others:
 * **Extremely simple implementation** of complex apps based on Web Components and other web standards such as template strings is supported, which means that only minimal code is required to write even complex components and apps.
 * **Automatic deep state observability** of variables, i.e. persons.push(newPerson) or even person.address.name=newName are recognized and lead to the rerendering of the UI - but only exactly those parts of the UI that depend on person.address.name - and all this without the overhead of a Virtual DOM or Virtual Proxies.
 * **Incremental enhancement of existing web applications** because individual components can be added to any web application created with another framework, as they are just web components.
-* **Functional development is supported** as an alternative to class-based approaches.
+* **Stores can simply be implemented by using pure JS** instead of special libraries because the deep observability functionality of this frameworks makes concepts like  obsolete.
 * **Easy start of development with no dependencies is possible**, because no transpiler, CLI or tool is needed. It is enough to include the framework which is only a few KB in size.
 * **IDEs provide best support even without extensions/plugins** since the code is pure JS.
 
@@ -131,9 +131,9 @@ component("counter-component", {
 
             <ul>
                 <li>Count: ${this.count}</li>
-                <li>Inverted (updated): ${this.inverted}</li>
+                <li>Inverted (updated): ${this.inverted()}</li>
                 <li>Doubled + 1 (not updated): ${this.doubled() + 1}</li>
-                <li>Tripled * 2 (updated): ${tripled * 2}</li>
+                <li>Tripled * 2 (updated): ${tripled() * 2}</li>
                 <li>Quadrupled (not updated): ${quadrupeled()}</li>
                 <li>PI (not updated): ${PI}</li>
             </ul>
@@ -198,12 +198,13 @@ component("counter-component", {
     
     render() {
         let doubled = function() { return this.counterStore.value * 2; }
+
         return () => `
             <div>${new Date()}</div>
             <div>Count: ${this.counterStore.value}</div>
             <button onclick="${this.counterStore.increment}">++</button>
             <button onclick="${() => this.counterStore.value++}">++</button>
-            <div>Double count: ${doubled}</div>
+            <div>Double count: ${doubled()}</div>
         `;
     }
 });
@@ -251,7 +252,7 @@ component("counter-component", {
         return () => `
             <div>${new Date()}b</div>
             <div>Count: ${this.counterStore.value} <button onclick="${() => this.counterStore.value++}">++</button></div>
-            <div>Double count + 1: ${this.counterStore.doubled+1}</div>
+            <div>Double count + 1: ${this.counterStore.doubled()+1}</div>
         `;
     }
 });
@@ -281,7 +282,7 @@ component("counter-component", {
         return () => `
             <div>${new Date()}b</div>
             <div>Count: ${this.counterStore.value} <button onclick="${() => this.counterStore.value++}">++</button></div>
-            <div>Double count + 1: ${this.counterStore.doubled+1}</div>
+            <div>Double count + 1: ${this.counterStore.doubled()+1}</div>
         `;
     }
 });
@@ -479,28 +480,6 @@ There is no special feature for the implementation of services. So these can be 
 ### Routing
 
 Routing is supported by [HofRouter](https://github.com/hofjs/hofrouter), a class specifically designed to be used with this framework. HofRouter also focusses on web standards based usage. This means you can use classic &lt;a&gt; elements instead of special router components. To achieve this, you can specify the destination routes for links using a router protocol. Alternatively, programmatic routing is possible via the HofRouter class. Similar to the illustrated observability concepts, there are also hooks that are called before or after navigation and that can be used to cancel navigation. Additionally, nested routing of arbitrary level is supported.
-
-
-### Class style components
-
-As an alternative to the **Function Syntax** shown above, all components can be defined using the **Class Syntax**. This is closer to the implementation and shows the connection to Web Components, since here it is to be derived from a base class.
-
-```js
-customElements.define('counter-component', class extends HofHtmlElement {
-    constructor() { super('div'); super.useAutoProps(); }
-
-    count = 10;
-
-    render() {
-        super.renderContent(() => `
-            <div>${new Date()}</div>
-            <div>Current value: ${this.count} <button onclick="${() => this.count++}">++</button></div>
-        `);
-    }
-});
-```
-
-For details, please refer to the examples.
 
 
 ## Restrictions
