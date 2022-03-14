@@ -1,6 +1,6 @@
 {
   "name": "@hofjs/hofjs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "High Observability Framework",
   "author": "Hof.js contributors",
   "repository": "https://github.com/hofjs/hof",
