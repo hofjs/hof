@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Personlist app</title>
+    <script src="../../lib/nomodule/hof.js"></script>
+    <script>
+        class Person {
+            constructor(name = "", age = "") {
+                this.id = (name && age) ? Person.counter++ : "";
+                this.name = name;
+                this.age = age;
+            }
+
+            static counter = 1;
+        }
+    </script>
+    <script>
+        const personStore = {
+            selected: new Person(),
+            persons: [new Person("Alex", 21), new Person("Chris", 19), new Person("Mike", 19)],
+
+            changeName(value) { this.selected.name = value; },
+            changeAge(event) { this.selected.age = event.target.value; },
+
+            create() { this.selected = new Person(); },
+            edit(person) { this.selected = { ...person }; },
+            remove(person) { this.persons.splice(this.findIndex(person), 1); this.create(); },
+            save() {
+                if (this.selected.id) // Existing person?
+                    this.persons.splice(this.findIndex(this.selected), 1, this.selected);
+                else
+                    this.persons.push(new Person(this.selected.name, this.selected.age));
+
+                this.create();
+            },
+            findIndex(person) { return this.persons.findIndex(p => p.id == person.id);  },
+        }
+
+        class PersonDataInput extends HofHtmlElement {
+            value = "";
+            label = "";
+            change = null;
+
+            constructor() {
+                super("label");
+            }
+
+            styles = css`
+                input { color: blue; }
+            `;
+
+            templates = html`
+                ${this.label}: <input value="${this.value}" onchange="${this.change}" />
+            `
+        }
+
+        customElements.define("person-data-input", PersonDataInput)
+
+        class PersonDataList extends HofHtmlElement {
+            // Property
+            persons = [];
+
+            // Derived property
+            get _filteredPersons() { return this.persons.filter(p => p.age > 20) } 
+
+            // Enum constants
+            WEEKDAYS = ["Monday", "Tuesday", "Wednesday"];
+
+            // Helper Function
+            getBirthday(person) {
+                let birthday = new Date();
+                birthday.setFullYear(birthday.getFullYear() - person.age);
+
+                return birthday.toLocaleDateString();
+            }
+
+            get _filteredPersonsLength() { return this.persons.length; }
+
+            test() {
+                return "<h1>Hi</h1>"
+            }
+
+            edititem = null;
+
+            deleteitem = null;
+
+            styles = `
+
+            `;
+
+            templates = [
+                item(() => html`<h2>Full list</h2>`),
+                list(this.persons, (person, index, updated) => html`
+                    <li>
+                        ${person.name} - ${person.age} years (birthday: ${this.getBirthday(person)})
+                        [<a href="#" onclick="${() => this.edititem(person)}">Edit</a>]
+                        [<a href="#" onclick="${() => this.deleteitem(person)}">Delete</a>]
+                        ${updated ? "(update)" : ""}
+                    </li>`, "ul"
+                ),
+                item(() => html`<h2>Filtered list</h2>`),
+                list(this._filteredPersons, (person, index, updated) => html`
+                    <li>
+                        [${index+1}] ${person.name} - ${person.age} years (updated: ${updated})
+                        [<a href="#" onclick="${() => this.edititem(person)}">Edit</a>]
+                        [<a href="#" onclick="${() => this.deleteitem(person)}">Delete</a>]
+                    </li>`, "ul"
+                ),
+
+
+                /* Alternative full rerendering on changes of underlying variables - only for constant arrays */
+                /* Derived properties only automatically updated, if referenced variables are specified */
+                // html(() => `<h1>persons (full rerendering)</h1>`),
+                // () => this.persons.map((person, index) => html`
+                //     <li>
+                //         [${index+1}] ${person.name} - ${person.age} years
+                //         [<a href="#" onclick="${() => this.edititem(person)}">Edit</a>]
+                //         [<a href="#" onclick="${() => this.deleteitem(person)}">Delete</a>]
+                //     </li>
+                // `).join(""),
+                // html(() => "<h1>filteredPersons (full rerendering)</h1>"),
+                // html(() => this._filteredPersons.map((person, index) => /* references: this.persons */ `
+                //     <li>
+                //         [${index+1}] ${person.name} - ${person.age} years
+                //         [<a href="#" onclick="${() => this.edititem(person)}">Edit</a>]
+                //         [<a href="#" onclick="${() => this.deleteitem(person)}">Delete</a>]
+                //     </li>
+                // `)),
+
+                // html((updated) => `First rendering: ${!updated}, expression: ${this.persons.length} ${this.WEEKDAYS}`),
+                // html(() => this._filteredPersons.length > 1 ? this.test() : `${this._filteredPersons.length}`),
+            ];
+        }
+
+        customElements.define("person-data-list", PersonDataList)
+
+        class PersonDataInfo extends HofHtmlElement {
+            value = [];
+
+            templates = html`
+                <br/><br/>Person Info
+                <li>First Person: ${(this.value[0]?.name || "-<b>Hi</b>") + " (" + (this.value[0]?.age || "") + ")"}</li>
+                <li>Last Person: ${(this.value[this.value.length-1]?.name ?? "-") + " (" + (this.value[this.value.length-1]?.age ?? "") + ")"}</li>
+            `;
+        }
+
+        customElements.define("person-data-info", PersonDataInfo)
+
+        class PersonData extends HofHtmlElement {
+            personStore = personStore;
+
+            constructor() {
+                super();
+                fetch('https://jsonplaceholder.typicode.com/todos?_limit=10')
+                    .then(response => response.json()).then(list => list.map(todo => new Person(todo.title, todo.id))).then(x => this.personStore.persons = x);             
+            }
+            
+            templates = html`
+                <fieldset>
+                    <person-data-input label="Name" value="${this.personStore.selected.name}" change="${(event) => this.personStore.changeName(event.target.value)}"></person-data-input>
+                    <person-data-input label="Age" value="${this.personStore.selected.age}" change="${(event) => this.personStore.changeAge(event)}"></person-data-input>
+                    <button onclick="${this.personStore.save}">Speichern</button>
+                </fieldset>                    
+
+                ${this.personStore.persons.length} persons in list
+                <person-data-list persons="${this.personStore.persons}" edititem="${this.personStore.edit}" deleteitem="${this.personStore.remove}"></person-data-list>
+                <person-data-list persons="${this.personStore.persons.filter(x => x.name.includes('de'))}" edititem="${this.personStore.edit}" deleteitem="${this.personStore.remove}"></person-data-list>
+
+                <a href="#" onclick="${this.personStore.create}">Neu</a>
+
+                <person-data-info value="${this.personStore.persons}"></person-data-info>  
+            `
+        }
+
+        customElements.define("person-data", PersonData)
+
+        // class PersonData extends HofHtmlElement {
+        //     selected = new Person();
+        //     persons = [new Person("Alex", 21), new Person("Chris", 19), new Person("Mike", 19)];
+
+        //     init() {
+        //         this.persons = [new Person("Alex", 21), new Person("Mike", 19)];
+        //     }
+
+        //     changeName(value) { this.selected.name = value; }
+        //     changeAge(event) { this.selected.age = event.target.value; }
+
+        //     create() { this.selected = new Person(); }
+        //     edit(person) { this.selected = { ...person }; } // Copy object to avoid live update on text change
+        //     remove(person) { this.persons.splice(this.findIndex(person), 1); this.create(); }
+        //     save() {console.dir(this); 
+        //         if (this.selected.id) // Existing person?
+        //             this.persons.splice(this.findIndex(this.selected), 1, this.selected);
+        //         else
+        //             this.persons.push(new Person(this.selected.name, this.selected.age));
+
+        //         this.create();
+        //     }
+        //     findIndex(person) { return this.persons.findIndex(p => p.id == person.id);  }
+            
+        //     templates = html`
+        //         <fieldset>
+        //             <person-data-input label="Name" value="${this.selected.name}" change="${(event) => this.changeName(event.target.value)}"></person-data-input>
+        //             <person-data-input label="Age" value="${this.selected.age}" change="${(event) => this.changeAge(event)}"></person-data-input>
+        //             <button onclick="${this.save}">Speichern</button>
+        //         </fieldset>                    
+                
+        //         ${this.persons.length} persons in list
+        //         <person-data-list persons="${this.persons}" edititem="${this.edit}" deleteitem="${this.remove}"></person-data-list>
+        //         <person-data-list persons="${this.persons.filter(x => x.name.includes('e'))}" edititem="${this.edit}" deleteitem="${this.remove}"></person-data-list>
+                
+        //         <a href="#" onclick="${this.create}">Neu</a>
+
+        //         <person-data-info value="${this.persons}"></person-data-info>  
+        //     `;
+        // }
+
+        // customElements.define("person-data", PersonData)
+
+
+
+        // class PersonDataList2 extends HofHtmlElement {
+        //     // Property
+        //     persons = [new Person("Alex", 21), new Person("Chris", 19), new Person("Mike", 19)];
+
+        //     // Derived property
+        //     get _filteredPersons() { return this.persons.filter(p => p.age > 20) } 
+
+        //     // Enum constants
+        //     WEEKDAYS = ["Monday", "Tuesday", "Wednesday"];
+
+        //     // Helper Function
+        //     getBirthday(person) {
+        //         let birthday = new Date();
+        //         birthday.setFullYear(birthday.getFullYear() - person.age);
+
+        //         return birthday.toLocaleDateString();
+        //     }
+
+        //     get _filteredPersonsLength() { return this.persons.length; }
+
+        //     test() {
+        //         return "<h1>Hi</h1>"
+        //     }
+
+        //     selected = new Person();
+        //     persons = [new Person("Alex", 21), new Person("Chris", 19), new Person("Mike", 19)];
+
+        //     changeName(value) { this.selected.name = value; }
+        //     changeAge(event) { this.selected.age = event.target.value; }
+
+        //     create() { this.selected = new Person(); }
+        //     edititem(person) { this.selected = { ...person }; } // Copy object to avoid live update on text change
+        //     deleteitem(person) { this.persons.splice(this.findIndex(person), 1); this.create(); }
+        //     save() {console.dir(this); 
+        //         if (this.selected.id) // Existing person?
+        //             this.persons.splice(this.findIndex(this.selected), 1, this.selected);
+        //         else
+        //             this.persons.push(new Person(this.selected.name, this.selected.age));
+
+        //         this.create();
+        //     }
+        //     findIndex(person) { return this.persons.findIndex(p => p.id == person.id);  }
+
+        //     edititem = null;
+
+        //     deleteitem = null;
+
+        //     styles = `
+
+        //     `;
+
+        //     templates = [
+        //         item(() => `
+        //             <fieldset>
+        //                 <person-data-input label="Name" value="${this.selected.name}" change="${(event) => this.changeName(event.target.value)}"></person-data-input>
+        //                 <person-data-input label="Age" value="${this.selected.age}" change="${(event) => this.changeAge(event)}"></person-data-input>
+        //                 <button onclick="${this.save}">Speichern</button>
+        //             </fieldset>                    
+                    
+        //             ${this.persons.length} persons in list
+        //         `),
+        //         item(() => html`<h2>Full list</h2>`),
+        //         list(this.persons, (person, index, updated) => html`
+        //             <li>
+        //                 ${person.name} - ${person.age} years (birthday: ${this.getBirthday(person)})
+        //                 [<a href="#" onclick="${() => this.edititem(person)}">Edit</a>]
+        //                 [<a href="#" onclick="${() => this.deleteitem(person)}">Delete</a>]
+        //                 ${updated ? "(update)" : ""}
+        //             </li>`, "ul"
+        //         ),
+        //         item(() => html`<h2>Filtered list</h2>`),
+        //         list(this._filteredPersons, (person, index, updated) => html`
+        //             <li>
+        //                 [${index+1}] ${person.name} - ${person.age} years (updated: ${updated})
+        //                 [<a href="#" onclick="${() => this.edititem(person)}">Edit</a>]
+        //                 [<a href="#" onclick="${() => this.deleteitem(person)}">Delete</a>]
+        //             </li>`, "ul"
+        //         ),
+        //         item(() => html`
+        //             <a href="#" onclick="${this.create}">Neu</a>
+        //             <person-data-info value="${this.persons}"></person-data-info>  
+        //         `)
+
+
+        //         /* Alternative full rerendering on changes of underlying variables - only for constant arrays */
+        //         /* Derived properties only automatically updated, if referenced variables are specified */
+        //         // html(() => `<h1>persons (full rerendering)</h1>`),
+        //         // () => this.persons.map((person, index) => html`
+        //         //     <li>
+        //         //         [${index+1}] ${person.name} - ${person.age} years
+        //         //         [<a href="#" onclick="${() => this.edititem(person)}">Edit</a>]
+        //         //         [<a href="#" onclick="${() => this.deleteitem(person)}">Delete</a>]
+        //         //     </li>
+        //         // `).join(""),
+        //         // html(() => "<h1>filteredPersons (full rerendering)</h1>"),
+        //         // html(() => this._filteredPersons.map((person, index) => /* references: this.persons */ `
+        //         //     <li>
+        //         //         [${index+1}] ${person.name} - ${person.age} years
+        //         //         [<a href="#" onclick="${() => this.edititem(person)}">Edit</a>]
+        //         //         [<a href="#" onclick="${() => this.deleteitem(person)}">Delete</a>]
+        //         //     </li>
+        //         // `)),
+
+        //         // html((updated) => `First rendering: ${!updated}, expression: ${this.persons.length} ${this.WEEKDAYS}`),
+        //         // html(() => this._filteredPersons.length > 1 ? this.test() : `${this._filteredPersons.length}`),
+        //     ];
+        // }
+
+        // customElements.define("person-data-list2", PersonDataList2)
+    </script>
+</head>
+<body>
+    <h1>Personlist app</h1>
+    <person-data></person-data>
+    <!-- <person-data-list2></person-data-list2> -->
+</body>
+</html>
