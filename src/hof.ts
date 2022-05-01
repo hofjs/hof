@@ -202,7 +202,7 @@ export abstract class HofHtmlElement extends HTMLElement {
             }
             else { // Regular template specification?
                 implementationWithTemplateFunction = implementation.replace(/[^\.]templates\s*=\s*html\s*`/m, " static templates = () => html`");
-                this.templates = new Function("return " + implementationWithTemplateFunction)().templates;
+                this.templates = new Function("baseClass", "HofHtmlElement = baseClass; return " + implementationWithTemplateFunction)(HofHtmlElement).templates;
             }
 
             if (implementationWithTemplateFunction == implementation)
@@ -883,28 +883,6 @@ export abstract class HofHtmlElement extends HTMLElement {
             this._processElementBinding(parentElement.childNodes[index], bindVariables, bindVariableNames);
     }
 
-    _removeObserversForBindVariable(bindVariableToDelete: string) {
-        // Remove observer expressions
-        if (this._observersForBindVariable.has(bindVariableToDelete))
-            for (const [comp] of this._observersForBindVariable.get(bindVariableToDelete)) {
-                for (const [attr, expr] of this._observerExpressions.get(comp))
-                    if (expr.bindVariableNames.includes(bindVariableToDelete))
-                        this._observerExpressions.get(comp).delete(attr);
-
-                if (this._observerExpressions.get(comp).size == 0)
-                    this._observerExpressions.delete(comp);
-            }
-
-        // Remove observers for bind variable
-        this._observersForBindVariable.delete(bindVariableToDelete);
-
-        // Remove bind variable
-        delete this._allBindVariables[bindVariableToDelete];
-
-        // Remove all bind expressions for bind variable
-        delete this._allBindExpressions[bindVariableToDelete];
-    }
-
     _calculateArrayChange(value: Array<Object>, oldValue: Array<Object>) {
         if (value.length > oldValue.length)
             value.lastActionMethod = "ADD";
@@ -1032,12 +1010,12 @@ export abstract class HofHtmlElement extends HTMLElement {
     _renderListElementUpdate(listData: ListData, cachedListData: CachedListData, value: Array<Object>) {
         // Remove node
         if (value.lastActionMethod == "DELETE") {
-            this._removeObserversForBindVariable(value.lastActionObject._observableUniqueName);
-
             // Remove all nodes of item at index
             const elementChangeIndex = value.lastActionIndex * cachedListData.listElementTemplateSize;
-            for (let i=0; i<cachedListData.listElementTemplateSize; i++) 
+            for (let i=0; i<cachedListData.listElementTemplateSize; i++) {
+                this._removeListElementObservers(listData.listParentElement.childNodes[elementChangeIndex])
                 listData.listParentElement.childNodes[elementChangeIndex].remove();
+            }
         }
         else {
             const locals = {};
@@ -1062,10 +1040,30 @@ export abstract class HofHtmlElement extends HTMLElement {
                     this._processElementBinding(listData.listParentElement.childNodes[elementChangeIndex + i], bindVariables, bindVariableNames);
                 }
                 else if (value.lastActionMethod == "EDIT") {
+                    this._removeListElementObservers(listData.listParentElement.childNodes[elementChangeIndex + i]);
                     listData.listParentElement.replaceChild(elements[0], listData.listParentElement.childNodes[elementChangeIndex + i])
                     this._processElementBinding(listData.listParentElement.childNodes[elementChangeIndex + i], bindVariables, bindVariableNames);
                 }
             }
+        }
+    }
+
+    _removeListElementObservers(node: ChildNode) {
+        node.childNodes.forEach(childNode => this._removeListElementObservers(childNode));
+       
+        if (this._observerExpressions.has(node)) {
+            for (const [, attrExpr] of this._observerExpressions.get(node))
+                for (const bindVariable of attrExpr.bindVariableNames) {
+                    if (this._observersForBindVariable.has(bindVariable)) {
+                        this._observersForBindVariable.get(bindVariable).delete(node);
+
+                        // Remove bindvariable if last observer was removed
+                        if (this._observersForBindVariable.get(bindVariable).size == 0)
+                            this._observersForBindVariable.delete(bindVariable);
+                    }
+                }
+
+            this._observerExpressions.delete(node);
         }
     }
 
