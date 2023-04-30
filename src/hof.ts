@@ -1,5 +1,5 @@
 // https://github.com/prateek3255/typescript-react-demo-library
-// test
+
 // Adapt bind to preserve function body instead of returning [native code] if function is bound which is
 // important because _makeDerivedVariablesObservable requires function body to setup observability
 (function () {
