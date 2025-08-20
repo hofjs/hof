@@ -1,6 +1,7 @@
 # Hof.js - High Observability Framework
 
 **Hof.js** is a **modern framework** for the development of **Single Page Applications**. It is an **open source project of Hof University of Applied Sciences** and **was created by Prof. Dr. Walter Kern**.
+Main contributions were provided by **Daniel Reul**, an Computer Science student at Hof University.
 
 Contact us if you are a student of Hof University of Applied Sciences and would like to contribute.
 
@@ -25,7 +26,7 @@ The following example shows a simple counter component that demonstrates key fea
 **simple-counter.js**
 
 ```js
-customElements.define("simple-counter", class extends HofHtmlElement {
+customElements.define("simple-counter", class extends HofElement {
     // Property (exposed as html attribute and js property)
     count = 10;
 
@@ -37,7 +38,7 @@ customElements.define("simple-counter", class extends HofHtmlElement {
 
     // Each reference to a property gets automatically observed
     // (if a property changes exactly that part of ui gets updated)
-    templates = html`
+    template = html`
         <div>Count: ${this.count}</div>
         <div>Inverse count: ${-this.count}</div>
         <div>Doubled count: ${this.doubled}</div>
@@ -87,11 +88,11 @@ This **package contains builds in esm, cjs and nomodules formats**. While cjs is
 The following examples show the **different import alternatives**.
 
 ```js
-import { HofHtmlElement, html } from "pathToNodeFolderOfApp/node_modules/@hofjs/hofjs/lib/esm/hof";
+import { HofElement, html } from "pathToNodeFolderOfApp/node_modules/@hofjs/hofjs/lib/esm/hof";
 ```
 
 ```js
-const { HofHtmlElement, html } = require("pathToNodeFolderOfApp/node_modules/@hofjs/hofjs/lib/cjs/hof");
+const { HofElement, html } = require("pathToNodeFolderOfApp/node_modules/@hofjs/hofjs/lib/cjs/hof");
 ```
 
 ```html
@@ -109,10 +110,10 @@ Minimal esm example
     <title>Minimal demo</title>
     <script type="module">
         // Inline JS - should be outsourced to external file.      
-        import { HofHtmlElement, html } from "../lib/esm/hof.js";
+        import { HofElement, html } from "../lib/esm/hof.js";
 
-        customElements.define("main-app", class extends HofHtmlElement {
-            templates = html`<h1>Hello at ${new Date()}</h1>`
+        customElements.define("main-app", class extends HofElement {
+            template = html`<h1>Hello at ${new Date()}</h1>`
         });
     </script>
 </head>
@@ -129,10 +130,10 @@ Minimal cjs example
 // window.customElements polyfill must be available to use
 // component helper to create component for server-side rendering
 
-const { HofHtmlElement, html } = require("../lib/esm/hof.js");
+const { HofElement, html } = require("../lib/esm/hof.js");
 
-customElements.define("main-app", class extends HofHtmlElement {
-    templates = html`<h1>Hello at ${new Date()}</h1>`
+customElements.define("main-app", class extends HofElement {
+    template = html`<h1>Hello at ${new Date()}</h1>`
 });
 
 ...
@@ -149,8 +150,8 @@ Minimal nomodules example
     <script src="../lib/nomodule/hof.js"></script>
     <script>    
         // Inline JS - should be outsourced to external file.      
-        customElements.define("main-app", class extends HofHtmlElement {
-            templates = html`<h1>Hello at ${new Date()}</h1>`
+        customElements.define("main-app", class extends HofElement {
+            template = html`<h1>Hello at ${new Date()}</h1>`
         });
     </script>
 </head>
@@ -160,12 +161,14 @@ Minimal nomodules example
 </html>
 ```
 
-There is also a [starter template](https://github.com/hofjs/starter) available for new projects that includes all required packages and supports Hot Module Reloading.
+<!-- There is also a [starter template](https://github.com/hofjs/starter) available for new projects that includes all required packages and supports Hot Module Reloading. -->
 
 
 ## Documentation
 
 The documentation with a step-by-step guide can be found at https://hofjs.github.io.
+
+This repository contains multiple samles that can be browsed by cloning this repository, runing `npm install` and starting a dev server with `npm start` and open the URL of the vite dev-server in your browser.
 
 You can contribute by sending pull requests to [this repository](https://github.com/hofjs/hof).
 

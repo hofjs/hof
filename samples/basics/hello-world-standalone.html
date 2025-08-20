@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hello world Standalone app</title>
+    <script src="../../lib/nomodule/hof.js"></script>
+    <script>
+        class HelloWorld extends HofElement {
+            /*  properties, recievable as HTML attribute */
+            name = "N/A";
+                
+            // declares the HTMl structure
+            template = html`
+                <h1>Hello World, ${this.name}!</h1> 
+                <span>It is ${new Date().toLocaleTimeString()}</span>
+            `;
+        }
+    
+        // Make as custom tag available
+        customElements.define("hello-world", HelloWorld );
+    </script>
+</head>
+<body>
+    <!-- changes of the attr in the dev tools update the value -->
+    <hello-world name="Foo Bar"></hello-world>
+</body>
+</html>

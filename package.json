@@ -1,36 +1,36 @@
 {
-  "name": "@hofjs/hofjs",
-  "version": "1.0.2",
-  "description": "High Observability Framework",
-  "author": "Hof.js contributors",
-  "repository": "https://github.com/hofjs/hof",
-  "license": "MIT",
-  "keywords": [
-    "framework",
-    "observability"
-  ],
-  "main": "./lib/cjs/hof.js",
-  "module": "./lib/esm/hof.js",
-  "types": "./lib/esm/hof.d.ts",
-  "browser": "./lib/nomodule/hof.js",
-  "type": "module",
-  "scripts": {
-    "clean": "rd /s /q lib 2>nul && rd /s /q samples\\ts\\lib 2>nul || exit 0",
-    "build": "yarn build:esm && yarn build:cjs && yarn build:nomodule && yarn build:samples",
-    "build:esm": "tsc",
-    "build:cjs": "tsc --module commonjs --outDir lib/cjs",
-    "build:nomodule": "yarn esbuild src/esbuild-wrapper/hof.esbuild.ts --bundle --minify --sourcemap=external --outfile=lib/nomodule/hof.js",
-    "build:samples": "tsc --project samples/ts/counterapp/tsconfig.json && tsc --project samples/ts/personlistapp/tsconfig.json",
-    "build:debug": "yarn esbuild src/esbuild-wrapper/hof.esbuild.ts --bundle --sourcemap=external --outfile=lib/nomodule/hof.js",
-    "prepublishOnly": "yarn build",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
-  },
-  "devDependencies": {
-    "esbuild": "^0.14.38",
-    "jest": "^28.0.3",
-    "typescript": "^4.6.4"
-  },
-  "files": [
-    "/lib"
-  ]
+    "name": "@hofjs/hofjs",
+    "version": "2.0.0",
+    "description": "High Observability Framework",
+    "author": "Hof.js contributors",
+    "repository": "https://github.com/hofjs/hof",
+    "license": "MIT",
+    "keywords": [
+        "framework",
+        "observability"
+    ],
+    "main": "./lib/cjs/hof.cjs",
+    "module": "./lib/esm/hof.js",
+    "types": "./lib/esm/hof.d.js",
+    "browser": "./lib/nomodule/hof.js",
+    "scripts": {
+        "start": "vite",
+        "build:all":"npm run build && npm run types:manu && npm run gzip",
+        
+        "build": "vite build",
+        
+        "types:auto": "npx tsc && echo  !!!warning!!! automatically created Types from lib are not very good, better create manually a hof.d.ts file",
+        "types:manu": "cp manuallTypes.d.ts lib/esm/hof.d.ts",
+        
+        "gzip": "gzip -k lib/esm/hof.js lib/esm/hof.min.js lib/cjs/hof.cjs lib/cjs/hof.min.cjs lib/nomodule/hof.js lib/nomodule/hof.min.js"
+        
+    },
+    "type": "module",
+    "devDependencies": {
+        "@rollup/plugin-commonjs": "^28.0.3",
+        "rollup-plugin-terser": "^7.0.2",
+        "typescript": "^5.8.3",
+        "vite": "^6.3.2"
+    },
+    "files": ["lib"]
 }
