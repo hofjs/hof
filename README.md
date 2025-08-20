@@ -168,7 +168,7 @@ Minimal nomodules example
 
 The documentation with a step-by-step guide can be found at https://hofjs.github.io.
 
-This repository contains multiple samles that can be browsed by cloning this repository, runing `npm install` and starting a dev server with `vite`.
+This repository contains multiple samles that can be browsed by cloning this repository, runing `npm install` and starting a dev server with `npm start` and open the URL of the vite dev-server in your browser.
 
 You can contribute by sending pull requests to [this repository](https://github.com/hofjs/hof).
 
