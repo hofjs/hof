@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lists Demo</title>
+    <meta charset="UTF-8">
+    <!--Can use all classes directly-->
+    <!-- <script src="../../lib/nomodule/hof.js"></script> -->
+    <script type="module" src="./attributes.js"></script>
+</head>
+<body>
+    <h1>Attributes</h1>
+    <p>
+        Look at the types of the props parsed from the attrs by using the console <code>city0.zip</code> or <code>RomPerson0.address.zip</code>
+    </p>
+    <p>
+        Try to change city0 name to Pompeji either with the dev tools attr or the console <code>city0.name="pompeii"</code>
+        (The change will propagate down)
+    </p>
+
+    <!--The string attributes are parsed to the type of the prop in the class.
+            id and name -> String;  zip -> Number  
+        Objects or arrays are parsed as arbitrary JSON, but the '"' can be omitted   
+            persons -> freeform JSON (here Array of Objects)
+    -->
+    <city-  
+        id="city0" 
+        name="Rom"
+        capital
+        mainStreet="Palantir Allee" 
+        zip="45045"  
+        persons='[ { name: Alpha A,age:23 },
+            {name:Beta B, age:66},
+            {name:Zeta, age:9999, address:{ street: star allee 42, city: Andor , zip:74032} }  ]'
+        >
+    </city->
+
+    <city-  id="city1"  name="Genua" mainStreet="River Street" zip="33" persons=' [{name: Marlon M, age: 16}]   '></city->
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shared Stores Sample</title>
+    <script type="module" src="stores.js"></script>
+  
+</head>
+<body>
+    <h1>Shared Stores</h1>
+    <p>Here you can see how to share state between multiple components.</p>
+
+
+    <counter-info ></counter-info>
+    
+    <hr>
+    <counter-range></counter-range>
+   
+   
+    <hr>
+    <p> Same data-object with other label </p>
+    <counter-info label="Other Name"></counter-info>
+
+
+    <hr>
+    <p>You can use shared JS-Object as default value and even change them centrally</p>
+
+    <person-info></person-info>
+    <person-info friends="[  {name:Arie,age:21}, {name: Berie,age: 31} ] "></person-info>
+    
+    <person-info person="name:Link,age:16"></person-info>
+</body>
+</html>
